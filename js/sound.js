@@ -189,6 +189,19 @@ window.Sound = (() => {
       tone(140, 0, 0.6, { type: 'square', vol: 0.12, slide: 0.25 });
       [84, 88, 91].forEach((m, i) => tone(midi(m), 0.35 + i * 0.08, 0.3, { type: 'triangle', vol: 0.1 }));
     },
+    // ---- おはなし ----
+    door() {
+      tone(90, 0, 0.35, { type: 'square', vol: 0.12, slide: 0.6 });
+      noise(0, 0.25, { vol: 0.4, freq: 250 });
+    },
+    rumble() {
+      noise(0, 1.2, { vol: 0.35, freq: 120 });
+      tone(55, 0, 1.2, { type: 'sawtooth', vol: 0.06 });
+    },
+    kiss() {
+      tone(900, 0, 0.12, { type: 'sine', vol: 0.15, slide: 1.8 });
+      [84, 88, 91, 96].forEach((m, i) => tone(midi(m), 0.15 + i * 0.07, 0.4, { type: 'triangle', vol: 0.08 }));
+    },
     // ---- メダル ----
     medal() {
       tone(988, 0, 0.1, { type: 'square', vol: 0.07 });

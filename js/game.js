@@ -117,8 +117,19 @@
       this.el.classList.add(cls);
       setTimeout(() => this.el.classList.remove(cls), 800);
     }
-    say(text, ms = 1800) {
+    say(text, ms = 1800, { below = false } = {}) {
+      this.bubbleEl.classList.toggle('below', below);
       this.bubbleEl.textContent = text;
+      // がめんの はしで きれないように ずらす
+      const b = this.bubbleEl;
+      b.style.setProperty('--shift', '0px');
+      const wrap = $('#board-wrap').getBoundingClientRect();
+      const r = this.el.getBoundingClientRect();
+      const cx = r.left + r.width / 2, w = b.offsetWidth;
+      let shift = 0;
+      if (cx - w / 2 < wrap.left + 8) shift = wrap.left + 8 - (cx - w / 2);
+      else if (cx + w / 2 > wrap.right - 8) shift = wrap.right - 8 - (cx + w / 2);
+      b.style.setProperty('--shift', shift + 'px');
       this.bubbleEl.classList.add('show');
       clearTimeout(this.bubbleTimer);
       this.bubbleTimer = setTimeout(() => this.bubbleEl.classList.remove('show'), ms);
@@ -500,21 +511,145 @@
     await moveTo(actor, x0, y0, 200, { size: s0 });
   }
 
+  // ---------- おしろ ----------
+  // ワニの おしろ。ボードの そと（たてながの がめんでは うえ、よこながでは みぎ）に おく
+  const TAUNTS = [
+    'まだまだ やられないもんねー！',
+    'ぜんぜん いたくないもんねー！',
+    'いまのは くすぐったかった だけだもんねー！',
+    'つぎは そうは いかないもんねー！',
+    'おひめさまは わたさないもんねー！',
+    'たまたま あたった だけだもんねー！',
+    'サングラスが ずれた だけだもんねー！',
+    'きょうは ちょうしが わるい だけだもんねー！',
+    'ばんそうこう はれば へっちゃらだもんねー！',
+    'お、おしろが ゆれてる… き、きのせいだもんねー！',
+  ];
+  // ばんそうこうを はる ばしょ（おしろの なかの %）
+  const BANDAGE_SPOTS = [[30, 40, -10], [68, 34, 15], [50, 60, 5], [22, 68, -20], [78, 66, 25],
+    [44, 24, -5], [60, 80, 10], [32, 86, -15], [74, 88, 20], [52, 42, 30]];
+  const BANDAGE_SVG =
+    '<svg viewBox="0 0 40 40">' + [45, -45].map(r =>
+      `<g transform="rotate(${r} 20 20)"><rect x="2" y="13" width="36" height="14" rx="7" fill="#f6d7b0" stroke="#c08a56" stroke-width="1.5"/>` +
+      `<rect x="15" y="14" width="10" height="12" fill="#e9bd8c"/></g>`).join('') + '</svg>';
+
+  const castle = {
+    el: $('#castle'), x: VB * 0.85, y: -14, size: 24,
+    place() {
+      const wrap = $('#board-wrap').getBoundingClientRect();
+      const b = board.getBoundingClientRect();
+      const u = VB / b.width;
+      const above = (b.top - wrap.top) * u;
+      const right = (wrap.right - b.right) * u;
+      if (above >= 22) {
+        this.size = Math.min(above * 0.92, 32);
+        this.x = VB - this.size / 2 - 4;
+        this.y = -above / 2;
+      } else if (right >= 22) {
+        this.size = Math.min(right * 0.8, 40);
+        this.x = VB + right / 2;
+        this.y = this.size / 2 + 6;
+      } else {
+        this.size = 18;
+        this.x = VB - 10;
+        this.y = 10;
+      }
+      this.el.style.left = (this.x / VB * 100) + '%';
+      this.el.style.top = (this.y / VB * 100) + '%';
+      this.el.style.setProperty('--s', this.size);
+    },
+    render(dmg, popLast = false) {
+      this.el.classList.remove('exploded');
+      this.el.querySelector('.bandages').innerHTML = BANDAGE_SPOTS.slice(0, dmg).map(([x, y, r], i) =>
+        `<span class="bandage${popLast && i === dmg - 1 ? ' new' : ''}" style="left:${x}%;top:${y}%;--r:${r}deg">${BANDAGE_SVG}</span>`).join('');
+    },
+    shake() {
+      this.el.classList.remove('shake');
+      void this.el.offsetWidth;
+      this.el.classList.add('shake');
+    },
+    explode() {
+      this.el.classList.add('exploded');
+    },
+  };
+  const damage = () => save.cleared.length;
+  window.addEventListener('resize', () => castle.place());
+
+  function makeCroc(size) {
+    const a = new Actor(null, { emoji: '🐊', word: 'ワニ' });
+    a.el.classList.add('croc');
+    a.rig.insertAdjacentHTML('beforeend', '<span class="shades">🕶️</span>');
+    a.size = size;
+    return a;
+  }
+  function makePrincess(size) {
+    const a = new Actor(null, { emoji: '🐜', word: 'おひめさま' });
+    a.el.classList.add('princess');
+    a.rig.insertAdjacentHTML('beforeend', '<span class="crown">👑</span><span class="ribbon">🎀</span>');
+    a.size = size;
+    return a;
+  }
+
+  // おしろから ワニが かおを だして くやしがる
+  async function crocTaunt(text) {
+    const croc = makeCroc(castle.size * 0.8);
+    croc.el.classList.add('peek');
+    croc.set(castle.x, castle.y + castle.size * 0.1, castle.size * 0.8);
+    croc.face(-1);
+    croc.once('popin');
+    croc.say(text, 3200, { below: true });
+    setMessage(text);
+    Sound.say(text, { pitch: 0.7, rate: 1.05 });
+    await sleep(3300);
+    croc.remove();
+  }
+
   // ---------- わるもの と たたかう ----------
-  async function battle(actor) {
-    const e = Hero.enemy();
-    const foe = new Actor(null, { emoji: e.emoji, word: e.name });
-    foe.el.classList.add('foe');
-    const y = VB * 0.58;
-    foe.set(offscreenX(1), y, 30);
-    svg.classList.add('dim');
-    setMessage(`あっ！ わるものの ${e.name} だ！`);
-    Sound.say(`あっ！ わるものの ${e.name} だ！`, { pitch: 1.3 });
+  // れんだの つよさ（gain: 1かいで たまる / decay: 1びょうで へる）
+  const FIGHTS = {
+    normal: { gain: 9, decay: 5, start: 15, size: 28, label: 'れんだで おしかえせ！' },
+    strong: { gain: 6, decay: 6, start: 10, size: 34, label: 'つよいぞ！ もっと れんだ！' },
+    boss: { gain: 4, decay: 5, start: 5, size: 42, label: 'ボスだ！ ぜんりょくで れんだ！' },
+  };
+
+  async function clash(actor, foe, y) {
+    const mid = VB / 2;
     actor.mode('running');
     foe.mode('running');
     await Promise.all([
-      moveTo(actor, VB * 0.3, y, 700, { size: 30, arc: 10 }),
-      moveTo(foe, VB * 0.74, y, 900, { ease: easeInOut }),
+      moveTo(actor, mid - actor.size / 2 + 2, y, 450, { ease: easeIn }),
+      moveTo(foe, mid + foe.size / 2 - 2, y, 450, { ease: easeIn }),
+    ]);
+    Sound.bonk();
+    actor.once('bonk');
+    foe.once('bonk');
+    sparks(mid, y - 6, 7, ['💥', '⭐', '✨']);
+    actor.mode('push');
+    foe.mode('push');
+  }
+
+  // kind: normal（3こめ）/ strong（5こめ。おしろへ ふっとばす）
+  async function battle(actor, kind, ctx) {
+    const cfg = FIGHTS[kind];
+    const e = Hero.enemy();
+    const foe = new Actor(null, { emoji: e.emoji, word: e.name });
+    foe.el.classList.add('foe');
+    if (kind === 'strong') foe.el.classList.add('strong');
+    const y = VB * 0.58;
+    svg.classList.add('dim');
+
+    // おしろから でてくる
+    castle.shake();
+    Sound.door();
+    foe.set(castle.x, castle.y, castle.size * 0.4);
+    const intro = kind === 'strong' ? `つよい ${e.name} が でてきた！` : `あっ！ ${e.name} が でてきた！`;
+    setMessage(intro);
+    Sound.say(intro, { pitch: 1.3 });
+    actor.mode('running');
+    foe.mode('running');
+    await Promise.all([
+      moveTo(actor, VB * 0.28, y, 700, { size: 30, arc: 10 }),
+      moveTo(foe, VB * 0.74, y, 1000, { size: cfg.size, arc: 26 }),
     ]);
     actor.mode('idle');
     foe.mode('idle');
@@ -524,48 +659,59 @@
     Sound.say(e.cry, { pitch: 0.6, rate: 0.9 });
     await sleep(1300);
 
-    // ぶつかりあいっこ
-    const half = 13;
-    const mid = VB / 2;
-    actor.mode('running');
-    foe.mode('running');
-    await Promise.all([
-      moveTo(actor, mid - half, y, 450, { ease: easeIn }),
-      moveTo(foe, mid + half, y, 450, { ease: easeIn }),
-    ]);
-    Sound.bonk();
-    actor.once('bonk');
-    foe.once('bonk');
-    sparks(mid, y - 6, 7, ['💥', '⭐', '✨']);
-    actor.mode('push');
-    foe.mode('push');
-    await pushContest(actor, foe, y);
+    await clash(actor, foe, y);
+    await pushContest(actor, foe, y, cfg);
 
-    // ひっさつわざ
     actor.mode(null);
     foe.mode(null);
     if (!actor.costume) await transform(actor);
-    await finisher(actor, foe, e);
+    await finisher(actor, foe, kind === 'strong' ? 'castle' : 'away');
     svg.classList.remove('dim');
+
+    if (kind === 'strong') await castleHit(ctx);
+  }
+
+  // 5こめの てきが おしろに ぶつかった あと
+  async function castleHit(ctx) {
+    castle.shake();
+    Sound.boom();
+    sparks(castle.x, castle.y, 10, ['💥', '⭐', '💫']);
+    if (ctx.newBandage) {
+      castle.render(ctx.damageAfter, true);
+      Sound.clank();
+    }
+    setMessage('おしろに ダメージ！');
+    await sleep(1200);
+    if (ctx.finaleDue) {
+      Sound.rumble();
+      castle.shake();
+      setMessage('おしろが ゴゴゴゴ… ゆれてる！');
+      await sleep(1600);
+    } else {
+      const text = ctx.newBandage ? TAUNTS[ctx.damageAfter - 1] : TAUNTS[Math.floor(Math.random() * TAUNTS.length)];
+      await crocTaunt(text);
+    }
   }
 
   // れんだで おしかえす
-  function pushContest(actor, foe, y) {
+  function pushContest(actor, foe, y, cfg) {
     return new Promise((resolve, reject) => {
       const gauge = $('#power');
       const fill = gauge.querySelector('.power-fill');
+      gauge.querySelector('.power-label').textContent = cfg.label;
       gauge.hidden = false;
       setMessage('タップ タップ！');
-      let power = 15, taps = 0, lastTap = performance.now(), raf = 0, last = performance.now();
+      let power = cfg.start, taps = 0, lastTap = performance.now(), raf = 0, last = performance.now();
       const shouts = ['えいっ！', 'がんばれー！', 'まけないぞ！', 'もうすこし！'];
+      const ha = actor.size / 2 - 2, hf = foe.size / 2 - 2;
 
       function onTap(ev) {
         ev.preventDefault();
-        power = Math.min(100, power + 9 * actor.speed);
+        power = Math.min(100, power + cfg.gain);
         taps++;
         lastTap = performance.now();
         Sound.push(power / 100);
-        sparks(actor.x + 13, y - 4 + Math.random() * 8, 2, ['💥', '✨']);
+        sparks(actor.x + ha, y - 4 + Math.random() * 8, 2, ['💥', '✨']);
         if (taps % 5 === 0) actor.say(shouts[(taps / 5 - 1) % shouts.length], 900);
         if (taps === 7) foe.say('ぐぬぬ…', 1000);
         if (power >= 100) done();
@@ -573,11 +719,11 @@
       function frame(now) {
         const dt = Math.min(50, now - last) / 1000;
         last = now;
-        power = Math.max(0, power - 7 * dt);  // わるものも すこし おしかえしてくる
+        power = Math.max(0, power - cfg.decay * dt);  // わるものも おしかえしてくる
         const c = VB / 2 + (power - 40) / 100 * 22;
         const j = () => (Math.random() - 0.5) * 0.8;
-        actor.x = c - 13 + j(); actor.y = y + j(); actor.apply();
-        foe.x = c + 13 + j(); foe.y = y + j(); foe.apply();
+        actor.x = c - ha + j(); actor.y = y + j(); actor.apply();
+        foe.x = c + hf + j(); foe.y = y + j(); foe.apply();
         fill.style.width = power + '%';
         if (now - lastTap > 3500) {
           actor.say('タップして！', 1200);
@@ -600,8 +746,8 @@
     });
   }
 
-  async function finisher(actor, foe, e) {
-    const f = Hero.finisher(actor.costume);
+  // dest: away（そとへ とんでいく）/ castle（おしろへ ふっとぶ）/ sky（そらの ほしに なる）
+  async function finisher(actor, foe, dest, f = Hero.finisher(actor.costume)) {
     actor.face(1);
     // ためて…
     actor.el.classList.add('charge');
@@ -642,16 +788,212 @@
     Sound.boom();
     foe.el.classList.add('defeated');
     sparks(foe.x, foe.y, 14, ['💥', '⭐', '✨', '🌟']);
-    foe.say('やられた〜！', 1400);
-    Sound.say('やられたー', { pitch: 0.7 });
+    const cry = dest === 'sky' ? 'おぼえてろ〜！' : 'やられた〜！';
+    foe.say(cry, 1400);
+    Sound.say(cry, { pitch: 0.7 });
     await sleep(500);
     actor.unpose();
-    await moveTo(foe, offscreenX(1), -30, 700, { arc: 10, ease: easeIn });
+    if (dest === 'castle') {
+      await moveTo(foe, castle.x, castle.y, 800, { size: castle.size * 0.5, arc: 30, ease: easeIn });
+    } else if (dest === 'sky') {
+      await moveTo(foe, VB * 0.8, -VB * 0.4, 1100, { size: 6, arc: 10, ease: easeIn });
+      sparks(VB * 0.8, 4, 6, ['⭐', '✨']);
+    } else {
+      await moveTo(foe, offscreenX(1), -30, 700, { arc: 10, ease: easeIn });
+    }
     foe.remove();
     actor.mode('happy');
     actor.say('せいぎの しょうり！', 1600);
     Sound.say('せいぎの しょうり！', { pitch: 1.3 });
     await sleep(1400);
+  }
+
+  // ---------- オープニング ----------
+  async function intro() {
+    castle.render(damage());
+    const y = VB * 0.6;
+    setMessage('');
+    const princess = makePrincess(24);
+    princess.set(VB * 0.32, y, 24);
+    princess.once('popin');
+    princess.mode('happy');
+    princess.say('ランラン ラン♪', 2000);
+    Sound.say('ランラン ラン', { pitch: 2 });
+    await sleep(2200);
+
+    const croc = makeCroc(34);
+    croc.set(offscreenX(1), y, 34);
+    croc.mode('running');
+    Sound.whoosh();
+    await moveTo(croc, VB * 0.74, y, 1000);
+    croc.mode('idle');
+    croc.face(-1);
+    const line = 'ワニワニ〜！ おひめさまは いただきだもんねー！';
+    croc.say(line, 3000);
+    setMessage(line);
+    Sound.say(line, { pitch: 0.7 });
+    await sleep(3000);
+
+    princess.mode(null);
+    princess.say('きゃー！', 1200);
+    Sound.say('きゃー', { pitch: 2 });
+    croc.mode('running');
+    await moveTo(croc, princess.x + 16, y, 400, { ease: easeIn });
+    Sound.bonk();
+    // ワニが おひめさまを かかえて おしろへ
+    princess.say('たすけてー！', 3000);
+    setMessage('おひめさまが さらわれた！');
+    Sound.say('たすけてー！', { pitch: 2 });
+    const c0 = { x: croc.x, y: croc.y, s: croc.size };
+    const p0 = { s: princess.size };
+    await tween(1600 * PACE, t => {
+      croc.x = c0.x + (castle.x - c0.x) * t;
+      croc.y = c0.y + (castle.y - c0.y) * t - Math.sin(Math.PI * t) * 20;
+      croc.size = c0.s + (castle.size * 0.5 - c0.s) * t;
+      croc.apply();
+      croc.face(castle.x - c0.x);
+      princess.size = p0.s + (castle.size * 0.35 - p0.s) * t;
+      princess.x = croc.x - croc.size * 0.2;
+      princess.y = croc.y - croc.size * 0.35;
+      princess.apply();
+    });
+    croc.remove();
+    princess.remove();
+    castle.shake();
+    Sound.door();
+    await sleep(800);
+
+    const ant = new Actor('あ');
+    ant.set(offscreenX(-1), y, 32);
+    ant.mode('running');
+    await moveTo(ant, VB * 0.42, y, 900);
+    ant.mode('idle');
+    ant.face(1);
+    const vow = 'たいへんだ！ おひめさまを たすけに いくぞ！';
+    ant.say(vow, 3000);
+    setMessage(vow);
+    Sound.say(vow, { pitch: 1.4 });
+    await sleep(3200);
+    await crocTaunt('くやしかったら ここまで おいでー！ だもんねー！');
+    ant.mode('running');
+    await moveTo(ant, offscreenX(1), y, 700, { ease: easeIn });
+    ant.remove();
+    save.introSeen = true;
+    writeSave();
+  }
+
+  // ---------- フィナーレ ----------
+  async function finale(actor) {
+    const y = VB * 0.6;
+    svg.classList.add('fade');
+    setMessage('おしろが…！');
+    await moveTo(actor, VB * 0.25, y, 600, { size: 30, arc: 8 });
+    actor.mode('idle');
+    for (let i = 0; i < 2; i++) {
+      castle.shake();
+      Sound.rumble();
+      await sleep(800);
+    }
+    // おしろ だいばくはつ
+    castle.explode();
+    Sound.boom();
+    board.classList.remove('flash');
+    void board.offsetWidth;
+    board.classList.add('flash');
+    sparks(castle.x, castle.y, 16, ['💥', '🔥', '⭐', '💫']);
+    setMessage('おしろが ばくはつした！');
+    Sound.say('おしろが ばくはつした！', { pitch: 1.4 });
+    await sleep(1400);
+
+    // ワニの ボスが でてくる
+    const croc = makeCroc(castle.size * 0.5);
+    croc.el.classList.add('boss');
+    croc.set(castle.x, castle.y, castle.size * 0.5);
+    const princess = makePrincess(castle.size * 0.4);
+    princess.el.classList.add('trapped');
+    princess.set(castle.x, castle.y, castle.size * 0.4);
+    croc.mode('running');
+    await Promise.all([
+      moveTo(croc, VB * 0.74, y, 1000, { size: FIGHTS.boss.size, arc: 30 }),
+      moveTo(princess, VB * 0.16, VB * 0.3, 1000, { size: 20, arc: 16 }),
+    ]);
+    croc.mode('idle');
+    croc.face(-1);
+    princess.say('たすけてー！', 1800);
+    Sound.say('たすけてー！', { pitch: 2 });
+    await sleep(1600);
+    const rage = 'よくも おしろを〜！ ほんきで いくもんねー！';
+    croc.say(rage, 3000);
+    setMessage(rage);
+    Sound.say(rage, { pitch: 0.6 });
+    await sleep(3000);
+
+    // さいごは ありの ヒーロー
+    actor.say('ありさん、たのんだ！', 1600);
+    Sound.say('ありさん、たのんだ！', { pitch: 1.5 });
+    actor.mode('running');
+    const ant = new Actor('あ');
+    ant.set(offscreenX(-1), y, 30);
+    ant.mode('running');
+    await Promise.all([
+      moveTo(actor, offscreenX(-1), y, 800, { ease: easeIn }),
+      moveTo(ant, VB * 0.28, y, 1000),
+    ]);
+    actor.remove();
+    ant.mode('idle');
+    ant.face(1);
+    const brave = 'おひめさま、いま たすけるぞ！';
+    ant.say(brave, 2400);
+    setMessage(brave);
+    Sound.say(brave, { pitch: 1.4 });
+    await sleep(2400);
+    await transform(ant);
+
+    await clash(ant, croc, y);
+    await pushContest(ant, croc, y, FIGHTS.boss);
+    ant.mode(null);
+    croc.mode(null);
+    await finisher(ant, croc, 'sky', {
+      kind: 'beam', name: 'ひっさつ！ ひらがな ファイナル ビーム！', pose: { id: 'gun', weapons: ['blaster'], sfx: 'laser' },
+    });
+
+    // おひめさまを たすけた！
+    princess.el.classList.remove('trapped');
+    princess.el.style.zIndex = 3;
+    princess.mode('happy');
+    await moveTo(princess, Math.min(ant.x + 28, VB - 14), y, 1000, { size: 26, arc: 14 });
+    princess.face(-1);
+    ant.face(1);
+    const thanks = 'ありがとう！ わたしの ヒーロー！';
+    princess.say(thanks, 2400);
+    setMessage(thanks);
+    Sound.say(thanks, { pitch: 1.9 });
+    await sleep(2600);
+    // ほっぺに チュー
+    princess.mode(null);
+    await moveTo(princess, ant.x + 20, y - 3, 500);
+    princess.say('チュッ♡', 1600);
+    Sound.kiss();
+    Sound.say('チュッ', { pitch: 2 });
+    ant.el.classList.add('blush');
+    sparks(ant.x + 5, ant.y - 8, 12, ['💕', '💗', '💖']);
+    await sleep(1500);
+    ant.mode('happy');
+    princess.mode('happy');
+    ant.say('え、えへへ…', 1800);
+    Sound.say('えへへ', { pitch: 1.4 });
+    await sleep(2200);
+  }
+
+  function showEnding() {
+    save.ending = (save.ending || 0) + 1;
+    writeSave();
+    const ov = $('#overlay-ending');
+    ov.querySelector('.ending-parade').innerHTML = Object.values(WORDS).map(w => `<span>${w.emoji}</span>`).join('');
+    confetti(ov.querySelector('.confetti'));
+    showOverlay('#overlay-ending', true);
+    Sound.fanfare();
+    setTimeout(() => Sound.say('おひめさまを たすけたよ！ ひらがな ぜんぶ クリア！ おめでとう！', { pitch: 1.5 }), 1000);
   }
 
   // ---------- メダル ゲット ----------
@@ -686,7 +1028,7 @@
   }
 
   // ---------- ひらがな ひとつぶん ----------
-  async function playLetter(c, color, actor) {
+  async function playLetter(c, color, actor, fight, ctx) {
     const info = WORDS[c];
     actor.mode('idle');
     setMessage(`${info.emoji} を タップしてね！`);
@@ -735,13 +1077,12 @@
 
     await trace(letter, actor);
 
-    // さいごに わるものが でてくる
-    await battle(actor);
+    // 3こめと 5こめは おしろから わるものが でてくる
+    if (fight) await battle(actor, fight, ctx);
 
-    // やっつけた！
     Sound.caught();
     actor.mode('happy');
-    setMessage('やっつけた！ じょうず！');
+    setMessage(fight ? 'やっつけた！ じょうず！' : 'かけた！ じょうず！');
     sparks(VB / 2, VB / 2, 12);
     await moveTo(actor, VB * 0.78, VB * 0.78, 500, { size: 24, arc: 10, ease: easeOutBack });
     actor.say(`${c}！`, 1500);
@@ -751,43 +1092,35 @@
     await medalGet(c);
   }
 
-  // ---------- ごっつんこ して こうたい ----------
-  async function swapActors(oldA, c) {
+  // ---------- なかまに なって こうたい ----------
+  async function handover(oldA, c) {
     svg.classList.add('fade');
     const newA = new Actor(c);
-    const size = 30;
     const y = VB / 2;
-    newA.set(offscreenX(1), y, size);
+    newA.set(offscreenX(1), y, 30);
     newA.mode('running');
     oldA.mode('running');
-    Sound.whoosh();
-
-    // まんなかに むかって はしる
-    const half = size / 2 - 2;
     await Promise.all([
-      moveTo(oldA, VB / 2 - half, y, 900, { size, ease: easeIn }),
-      moveTo(newA, VB / 2 + half, y, 900, { size, ease: easeIn }),
+      moveTo(oldA, VB * 0.3, y, 700, { size: 30 }),
+      moveTo(newA, VB * 0.72, y, 900),
     ]);
-
-    // ごっつんこ！
-    Sound.bonk();
     clearLetter();
-    oldA.mode(null); newA.mode(null);
-    oldA.once('bonk'); newA.once('bonk');
-    sparks(VB / 2, y - 12, 7, ['⭐', '💥', '✨']);
-    await Promise.all([
-      moveTo(oldA, VB / 2 - half - 10, y, 300, { ease: easeOutBack }),
-      moveTo(newA, VB / 2 + half + 10, y, 300, { ease: easeOutBack }),
-    ]);
-    oldA.say('いててー！', 1600);
-    Sound.say('いててー', { pitch: 1.2, rate: 1.0 });
-    await sleep(650);
-    newA.say('いててー！', 1600);
-    Sound.say('いててー', { pitch: 1.9, rate: 1.1 });
-    await sleep(1100);
+    oldA.mode('idle');
+    newA.mode('idle');
+    oldA.face(1);
+    newA.face(-1);
+    oldA.say('なかまに なって たすけてくれ！', 2400);
+    Sound.say('なかまに なって、たすけてくれ！', { pitch: 1.3 });
+    await sleep(2400);
+    newA.once('popin');
+    newA.mode('happy');
+    newA.say('わかった！', 1600);
+    Sound.caught();
+    Sound.say('わかった！', { pitch: 1.8 });
+    await sleep(1500);
 
     // こうたい
-    oldA.say('バトンタッチ！', 1200);
+    oldA.say('まかせたよ！', 1200);
     oldA.mode('running');
     oldA.face(-1);
     await Promise.all([
@@ -848,6 +1181,13 @@
     if (document.visibilityState === 'visible' && $('#screen-play').classList.contains('active')) keepAwake(true);
   });
 
+  // わるものが でるのは 3こめ と さいご（5こめ）だけ
+  function fightKind(i, n) {
+    if (i === n - 1) return 'strong';
+    if (n >= 5 && i === 2) return 'normal';
+    return null;
+  }
+
   async function playStage(stageIdx) {
     cancelAll();
     enterPlayHistory();
@@ -857,8 +1197,11 @@
     const order = stageOrder(stageIdx);
     showOverlay('#overlay-clear', false);
     showOverlay('#overlay-bye', false);
+    showOverlay('#overlay-ending', false);
     showScreen('screen-play');
     resizeBoard();
+    castle.place();
+    castle.render(damage());
     clearLetter();
     $('#actors').innerHTML = '';
     $('#fx').innerHTML = '';
@@ -871,18 +1214,33 @@
     label.style.background = stage.color;
     renderProgress(order, 0);
 
+    // この だんで おしろに ばんそうこうが ふえるか、さいごの たたかいに なるか
+    const after = new Set([...save.cleared, stageIdx]).size;
+    const ctx = {
+      newBandage: !save.cleared.includes(stageIdx),
+      damageAfter: after,
+      finaleDue: after === STAGES.length && (!save.cleared.includes(stageIdx) || stageIdx === STAGES.length - 1),
+    };
+
     try {
+      if (stageIdx === 0 && !save.introSeen) await intro();
       let actor = new Actor(order[0]);
       actor.set(VB / 2, VB / 2, 34);
       actor.once('popin');
       Sound.pop();
       for (let i = 0; i < order.length; i++) {
-        if (i > 0) actor = await swapActors(actor, order[i]);
+        if (i > 0) actor = await handover(actor, order[i]);
         renderProgress(order, i);
-        await playLetter(order[i], stage.color, actor);
+        await playLetter(order[i], stage.color, actor, fightKind(i, order.length), ctx);
         renderProgress(order, i + 1);
       }
       await sleep(300);
+      if (ctx.finaleDue) {
+        markStageCleared(stageIdx);
+        await finale(actor);
+        if (my === epoch) showEnding();
+        return;
+      }
       if (my === epoch) stageClear(stageIdx, order);
     } catch (e) {
       ignoreCancel(e);
@@ -909,12 +1267,16 @@
   }
 
   // ---------- クリア → きょうは ここまで？ ----------
+  function markStageCleared(stageIdx) {
+    if (!save.cleared.includes(stageIdx)) save.cleared.push(stageIdx);
+    save.unlocked = Math.max(save.unlocked, Math.min(stageIdx + 1, STAGES.length - 1));
+    writeSave();
+  }
+
   async function stageClear(stageIdx, order) {
     const stage = STAGES[stageIdx];
-    if (!save.cleared.includes(stageIdx)) save.cleared.push(stageIdx);
+    markStageCleared(stageIdx);
     const next = stageIdx + 1;
-    save.unlocked = Math.max(save.unlocked, Math.min(next, STAGES.length - 1));
-    writeSave();
 
     const ov = $('#overlay-clear');
     ov.querySelector('.clear-title').textContent = `${stage.name} の だん クリア！`;
@@ -992,6 +1354,10 @@
       }
       map.appendChild(b);
     });
+    const d = damage();
+    $('#castle-status').innerHTML = save.ending
+      ? '👑 おひめさまを たすけた！ <small>（もういちど あそべるよ）</small>'
+      : `🏰 ワニの おしろ <span class="cs-bars">${'✚'.repeat(d)}<i>${'✚'.repeat(STAGES.length - d)}</i></span> ${d}/${STAGES.length}`;
     $('#zukan-count').textContent = `${Object.keys(save.caught).length}/${Object.keys(WORDS).length}`;
   }
 
@@ -999,7 +1365,7 @@
     cancelAll();
     keepAwake(false);
     if (!fromBack && history.state && history.state.play) history.back();
-    ['#overlay-clear', '#overlay-bye', '#overlay-zukan'].forEach(id => showOverlay(id, false));
+    ['#overlay-clear', '#overlay-bye', '#overlay-zukan', '#overlay-ending'].forEach(id => showOverlay(id, false));
     $('#actors').innerHTML = '';
     $('#btn-henshin').hidden = true;
     $('#medal-detail').classList.remove('show');
@@ -1051,6 +1417,27 @@
     if (n) Sound.say(`${WORDS[c].word}の ${c}`, { pitch: 1.4 });
   }
 
+  async function playIntro() {
+    cancelAll();
+    enterPlayHistory();
+    showScreen('screen-play');
+    resizeBoard();
+    castle.place();
+    clearLetter();
+    $('#actors').innerHTML = '';
+    $('#fx').innerHTML = '';
+    $('#progress').innerHTML = '';
+    const label = $('#stage-label');
+    label.textContent = 'おはなし';
+    label.style.background = '#e17055';
+    try {
+      await intro();
+      goTitle();
+    } catch (e) {
+      ignoreCancel(e);
+    }
+  }
+
   // ---------- ボタン ----------
   $('#btn-play').onclick = () => { Sound.unlock(); playStage(nextStageIdx()); };
   $('#btn-home').onclick = () => goTitle();
@@ -1059,6 +1446,9 @@
     b.onclick = () => { save.mode = b.dataset.mode; writeSave(); renderTitle(); };
   });
   $('#btn-zukan').onclick = () => { renderZukan(); showOverlay('#overlay-zukan', true); };
+  $('#btn-story').onclick = () => { Sound.unlock(); playIntro(); };
+  $('#btn-ending-home').onclick = () => goTitle();
+  $('#btn-ending-medal').onclick = () => { goTitle(); renderZukan(); showOverlay('#overlay-zukan', true); };
   $('#btn-zukan-close').onclick = () => showOverlay('#overlay-zukan', false);
   $('#btn-detail-close').onclick = () => $('#medal-detail').classList.remove('show');
   $('#btn-reset').onclick = () => {

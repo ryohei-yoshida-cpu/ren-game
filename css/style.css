@@ -184,17 +184,18 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 }
 .actor .bubble {
   position: absolute; left: 50%; bottom: 100%;
-  transform: translate(-50%, -6px) scale(0); transform-origin: bottom center;
+  transform: translate(calc(-50% + var(--shift, 0px)), -6px) scale(0); transform-origin: bottom center;
   background: #fff; border-radius: 18px; padding: 6px 14px;
-  font-size: clamp(18px, 4vw, 28px); font-weight: 900; white-space: nowrap;
+  font-size: clamp(18px, 4vw, 28px); font-weight: 900;
+  width: max-content; max-width: min(84vw, 560px); text-align: center; line-height: 1.3;
   box-shadow: 0 4px 0 rgba(74, 52, 38, .15);
   transition: transform .2s cubic-bezier(.3, 1.6, .5, 1);
 }
 .actor .bubble::after {
-  content: ''; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+  content: ''; position: absolute; left: calc(50% - var(--shift, 0px)); top: 100%; transform: translateX(-50%);
   border: 8px solid transparent; border-top-color: #fff;
 }
-.actor .bubble.show { transform: translate(-50%, -6px) scale(1); }
+.actor .bubble.show { transform: translate(calc(-50% + var(--shift, 0px)), -6px) scale(1); }
 
 .actor.idle .body { animation: idle 1.4s ease-in-out infinite; }
 .actor.running .body { animation: run .45s ease-in-out infinite; }
@@ -509,3 +510,75 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   animation: bigBeam 1s ease-out forwards;
 }
 @keyframes bigBeam { 0% { transform: translateY(-50%) scaleX(0); opacity: 1; } 30% { transform: translateY(-50%) scaleX(1) scaleY(1.2); } 70% { opacity: 1; } 100% { transform: translateY(-50%) scaleX(1) scaleY(.2); opacity: 0; } }
+
+/* ---------- おしろ ---------- */
+#castle {
+  --s: 24;
+  position: absolute; z-index: 1; pointer-events: none;
+  width: calc(var(--s) / 109 * var(--bw, 300px)); height: calc(var(--s) / 109 * var(--bw, 300px));
+  transform: translate(-50%, -50%);
+  font-size: calc(var(--s) / 109 * var(--bw, 300px) * .9);
+  display: grid; place-items: center; line-height: 1;
+}
+#castle .castle-emoji { filter: drop-shadow(0 .04em 0 rgba(74, 52, 38, .25)); }
+#castle .bandages { position: absolute; inset: 0; }
+#castle .bandage {
+  position: absolute; width: 22%; transform: translate(-50%, -50%) rotate(var(--r));
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .25));
+}
+#castle .bandage svg { display: block; width: 100%; height: auto; }
+#castle .bandage.new { animation: bandageIn .6s cubic-bezier(.3, 1.8, .5, 1); }
+@keyframes bandageIn { from { transform: translate(-50%, -50%) rotate(var(--r)) scale(3); opacity: 0; } to { transform: translate(-50%, -50%) rotate(var(--r)) scale(1); opacity: 1; } }
+#castle.shake { animation: castleShake .6s ease-in-out; }
+@keyframes castleShake {
+  0%, 100% { transform: translate(-50%, -50%); }
+  20% { transform: translate(-56%, -50%) rotate(-4deg); } 40% { transform: translate(-44%, -52%) rotate(4deg); }
+  60% { transform: translate(-54%, -49%) rotate(-3deg); } 80% { transform: translate(-47%, -51%) rotate(2deg); }
+}
+#castle.exploded .castle-emoji, #castle.exploded .bandages { animation: blowUp .8s ease-out forwards; }
+#castle.exploded::after { content: '💥'; position: absolute; font-size: 1.2em; animation: boomOut 1.4s ease-out forwards; }
+@keyframes blowUp { 0% { transform: scale(1); } 30% { transform: scale(1.3) rotate(8deg); filter: brightness(2); } 100% { transform: scale(0) rotate(40deg); opacity: 0; } }
+@keyframes boomOut { 0% { transform: scale(.2); opacity: 1; } 50% { transform: scale(1.6); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+
+/* ワニ・おひめさま */
+.actor .shades { position: absolute; z-index: 2; left: 2%; top: 16%; font-size: .42em; line-height: 1; transform: rotate(-8deg); }
+.actor.croc.boss .body { filter: drop-shadow(0 0 .08em #ff3d7f) drop-shadow(0 0 .16em #7b2ff7); }
+.actor.peek { z-index: 1; }
+.actor.peek .body { animation: peekUp .5s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes peekUp { from { transform: translateY(60%) scale(.5); } to { transform: none; } }
+.actor .crown { position: absolute; z-index: 2; left: 18%; top: -12%; font-size: .42em; line-height: 1; transform: rotate(-12deg); }
+.actor .ribbon { position: absolute; z-index: 2; right: 12%; top: 4%; font-size: .3em; line-height: 1; }
+.actor.princess .body { filter: drop-shadow(0 0 .06em #ff9fd2) drop-shadow(0 .06em 0 rgba(74, 52, 38, .2)); }
+.actor.trapped::before {
+  content: ''; position: absolute; inset: -14%; border-radius: 50%; z-index: 3;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .8) 0 8%, rgba(160, 220, 255, .25) 30%, rgba(120, 180, 255, .35) 70%);
+  border: 2px solid rgba(120, 180, 255, .7); animation: idle 1.6s ease-in-out infinite;
+}
+.actor.blush .rig::after {
+  content: ''; position: absolute; z-index: 2; right: 18%; top: 48%; width: 22%; height: 14%; border-radius: 50%;
+  background: rgba(255, 105, 150, .55); filter: blur(1px);
+}
+.actor.foe.strong .body { filter: drop-shadow(0 0 .1em #ff3d00) drop-shadow(0 0 .2em #ff3d7f); }
+
+.actor .bubble.below { bottom: auto; top: 100%; transform: translate(calc(-50% + var(--shift, 0px)), 6px) scale(0); transform-origin: top center; }
+.actor .bubble.below.show { transform: translate(calc(-50% + var(--shift, 0px)), 6px) scale(1); }
+.actor .bubble.below::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: #fff; }
+
+/* ---------- タイトル: おしろの ようす ---------- */
+.castle-status {
+  font-size: 15px; font-weight: 900; background: #fff; border-radius: 999px; padding: 8px 16px;
+  box-shadow: 0 4px 0 rgba(74, 52, 38, .1);
+}
+.castle-status .cs-bars { color: #e9a86b; letter-spacing: 1px; }
+.castle-status .cs-bars i { font-style: normal; color: #e6dccb; }
+.title-foot-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* ---------- エンディング ---------- */
+.ending-title { font-size: clamp(22px, 6vw, 36px); font-weight: 900; color: var(--accent); }
+.ending-couple { display: flex; align-items: center; gap: 6px; font-size: 64px; line-height: 1; }
+.ending-couple .ec-hero { transform: scaleX(-1); display: inline-block; }
+.ending-couple .ec-heart { font-size: 40px; animation: pop .8s ease-in-out infinite alternate; }
+.ending-couple .ec-princess { position: relative; display: inline-block; }
+.ending-couple .ec-princess i { position: absolute; left: 14%; top: -36%; font-size: 30px; font-style: normal; }
+.ending-text { margin: 0; font-size: 20px; font-weight: 900; }
+.ending-parade { font-size: 28px; gap: 2px; }
