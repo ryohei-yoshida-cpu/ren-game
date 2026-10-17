@@ -1086,6 +1086,14 @@
   window.addEventListener('appinstalled', () => { $('#btn-install').hidden = true; });
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    // あたらしい ばんに かわったら、タイトルがめんの ときだけ いちど よみなおす
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloaded || !$('#screen-title').classList.contains('active')) return;
+      reloaded = true;
+      location.reload();
+    });
     navigator.serviceWorker.register('sw.js').catch(() => { /* オフラインに ならないだけ */ });
   }
 
