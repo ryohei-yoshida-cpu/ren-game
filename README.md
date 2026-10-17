@@ -21,17 +21,33 @@
 - すすんだ だん・つかまえた ひらがな（ずかん）・モードは ブラウザ（localStorage）に ほぞんされます
 - タイトルの「さいしょから（おとなよう）」で リセットできます
 
-## うごかしかた
+## うごかしかた（Android）
 
-ビルドは いりません。`index.html` を ブラウザで ひらくだけで あそべます。
+アプリストアからは ダウンロードしません。**インターネット上に おいた ページを Chrome で ひらいて、ホームがめんに ついか** すると アプリとして つかえます（PWA）。
+いちど ひらけば **オフラインでも あそべます**。
 
-iPad / iPhone で あそぶなら GitHub Pages で こうかいするのが かんたんです:
+### 1. ページを こうかいする（さいしょに 1かいだけ・パソコン推奨）
 
-1. GitHub の リポジトリ → **Settings → Pages**
-2. Source: `Deploy from a branch`、Branch: `main` / `(root)` を えらんで Save
-3. でてきた URL を Safari で ひらき、きょうゆう → **「ホーム画面に追加」** すると アプリのように ぜんがめんで あそべます
+このリポジトリは **プライベート** なので、むりょうの GitHub Pages を つかうには **パブリックに する** ひつようが あります（ひみつの じょうほうは ふくまれていません）。
 
-ローカルで ためすなら:
+1. GitHub の リポジトリ → **Settings → General** の いちばん した「Danger Zone」→ **Change visibility → Public**
+2. **Settings → Pages** → Source: `Deploy from a branch` → Branch: `main`（または この ブランチ）/ `/(root)` → **Save**
+3. 1〜2ふん まつと `https://ryohei-yoshida-cpu.github.io/ren-game/` で ひらけるように なります
+
+> プライベートの まま にしたい ばあいは、[Cloudflare Pages](https://pages.cloudflare.com/) や [Netlify](https://www.netlify.com/) に GitHub を つなげば むりょうで こうかいできます（ビルドコマンドなし・こうかいフォルダは ルート）。
+
+### 2. Android に いれる
+
+1. Android の **Chrome** で うえの URL を ひらく
+2. タイトルがめんの **「📲 ホームがめんに ついか」** ボタンを おす
+   （でない ときは Chrome の **︙メニュー → 「ホーム画面に追加」/「アプリをインストール」**）
+3. ホームがめんの アイコンから ひらくと、ぜんがめんで あそべます
+
+- あそんでいる あいだは がめんが くらく なりません
+- Android の **「もどる」** で タイトルに もどります
+- こえが でない ときは、**せってい → システム → 言語と入力 → テキスト読み上げ** で「Google 音声サービス」の **日本語** を いれてください
+
+### パソコンで ためす
 
 ```sh
 python3 -m http.server 8000
@@ -39,7 +55,7 @@ python3 -m http.server 8000
 ```
 
 ### こえ について
-こえは ブラウザの よみあげ（Web Speech API）を つかっています。iPhone / iPad では マナーモードを はずし、おとを だしてください。
+こえは ブラウザの よみあげ（Web Speech API）を つかっています。マナーモードを はずし、おとを だしてください。
 にほんごの こえ（Kyoko など）が ない たんまつでは、こえの かわりに ふきだしの もじだけが でます。
 
 ## ファイル
@@ -52,6 +68,7 @@ python3 -m http.server 8000
 | `js/strokes.js` | かきじゅんデータ（KanjiVG より） |
 | `js/sound.js` | こうかおん・うた・よみあげ |
 | `js/game.js` | ゲームの すすめかた・なぞり はんてい・ほぞん |
+| `manifest.webmanifest`, `sw.js`, `icons/` | アプリとして インストール・オフライン たいおう |
 
 キャラや ことばを かえたいときは `js/data.js` を へんしゅうしてください。
 

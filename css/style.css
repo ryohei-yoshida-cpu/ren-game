@@ -70,7 +70,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   border: none; background: none; font-size: 12px; opacity: .45; text-decoration: underline;
 }
 .btn-icon {
-  width: 52px; height: 52px; border-radius: 50%; border: none;
+  flex-shrink: 0; width: clamp(42px, 11vw, 52px); height: clamp(42px, 11vw, 52px); border-radius: 50%; border: none;
   font-size: 26px; background: #fff; box-shadow: 0 4px 0 rgba(74, 52, 38, .15);
 }
 
@@ -115,16 +115,16 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 
 /* ---------- あそぶ ---------- */
 .topbar {
-  width: 100%; max-width: 900px; display: flex; align-items: center; gap: 12px;
+  width: 100%; max-width: 900px; display: flex; align-items: center; gap: clamp(6px, 2vw, 12px);
 }
 .stage-label {
-  font-size: 22px; font-weight: 900; padding: 6px 16px; border-radius: 999px; color: #fff;
+  font-size: clamp(16px, 4.6vw, 22px); font-weight: 900; padding: 6px 16px; border-radius: 999px; color: #fff;
   white-space: nowrap;
 }
-.progress { margin-left: auto; display: flex; gap: 6px; }
+.progress { margin-left: auto; display: flex; gap: clamp(3px, 1vw, 6px); flex-shrink: 0; }
 .progress .dot {
-  width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 255, 255, .7);
-  border: 3px dashed #d9c3a0; display: grid; place-items: center; font-size: 22px;
+  width: clamp(26px, 8vw, 40px); height: clamp(26px, 8vw, 40px); border-radius: 50%; background: rgba(255, 255, 255, .7);
+  border: 3px dashed #d9c3a0; display: grid; place-items: center; font-size: clamp(15px, 4.5vw, 22px);
 }
 .progress .dot.done { border: 3px solid #ffd56b; background: #fff; animation: pop .4s; }
 .progress .dot.now { border-color: var(--accent); }

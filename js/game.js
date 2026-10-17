@@ -509,8 +509,36 @@
     });
   }
 
+  // ---------- アンドロイドの「もどる」ボタン ----------
+  // あそんでいる ときに もどるを おすと、アプリを とじずに タイトルへ もどる
+  function enterPlayHistory() {
+    if (!history.state || !history.state.play) history.pushState({ play: true }, '');
+  }
+  window.addEventListener('popstate', () => {
+    if ($('#screen-play').classList.contains('active') || document.querySelector('.overlay.show')) goTitle(true);
+  });
+
+  // ---------- あそんでいる あいだ がめんを くらく しない ----------
+  let wakeLock = null;
+  async function keepAwake(on) {
+    try {
+      if (on && !wakeLock && navigator.wakeLock) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      } else if (!on && wakeLock) {
+        await wakeLock.release();
+        wakeLock = null;
+      }
+    } catch (e) { /* つかえない たんまつ */ }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && $('#screen-play').classList.contains('active')) keepAwake(true);
+  });
+
   async function playStage(stageIdx) {
     cancelAll();
+    enterPlayHistory();
+    keepAwake(true);
     const my = epoch;
     const stage = STAGES[stageIdx];
     const order = stageOrder(stageIdx);
@@ -649,8 +677,10 @@
     $('#zukan-count').textContent = `${Object.keys(save.caught).length}/${Object.keys(WORDS).length}`;
   }
 
-  function goTitle() {
+  function goTitle(fromBack) {
     cancelAll();
+    keepAwake(false);
+    if (!fromBack && history.state && history.state.play) history.back();
     ['#overlay-clear', '#overlay-bye', '#overlay-zukan'].forEach(id => showOverlay(id, false));
     $('#actors').innerHTML = '';
     clearLetter();
@@ -689,6 +719,26 @@
       renderTitle();
     }
   };
+
+  // ---------- インストール（ホームがめんに ついか）----------
+  let installPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    installPrompt = e;
+    $('#btn-install').hidden = false;
+  });
+  $('#btn-install').onclick = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    installPrompt = null;
+    $('#btn-install').hidden = true;
+  };
+  window.addEventListener('appinstalled', () => { $('#btn-install').hidden = true; });
+
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* オフラインに ならないだけ */ });
+  }
 
   // テストよう
   window.__game = { STAGES, get save() { return save; } };
