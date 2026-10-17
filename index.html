@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="ひらがな">
+  <meta name="apple-mobile-web-app-title" content="ひらがなまてまて">
   <meta name="theme-color" content="#fff4dc">
-  <title>ひらがな おいかけっこ</title>
+  <title>わるいワニをやっつけろ ひらがなまてまて</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -38,10 +38,18 @@
     <!-- タイトル -->
     <section id="screen-title" class="screen active">
       <h1 class="logo">
-        <span class="logo-sub">にげる ひらがなを つかまえろ！</span>
-        <span class="logo-main">ひらがな<br>おいかけっこ</span>
+        <span class="logo-sub">わるい ワニを やっつけろ！</span>
+        <span class="logo-main">ひらがな<br>まてまて</span>
       </h1>
-      <div class="logo-parade" aria-hidden="true">🐜 🐶 🐰 🦐 👻</div>
+      <!-- ワニが かげから おひめさまを ねらっている -->
+      <div id="title-scene" class="title-scene" aria-hidden="true">
+        <span class="ts-castle">🏰</span>
+        <span class="ts-princess"><span class="ts-body">🐜</span><i class="ts-crown">👑</i><i class="ts-ribbon">🎀</i><b class="ts-note">♪</b></span>
+        <span class="ts-hero">🐜</span><span class="ts-heart">💕</span>
+        <span class="ts-croc"><span class="ts-body">🐊</span><i class="ts-shades">🕶️</i><b class="ts-grin">ニヤリ</b></span>
+        <span class="ts-bush">🌳</span>
+        <span class="ts-bush ts-bush2">🌳</span>
+      </div>
 
       <button id="btn-play" class="btn btn-go btn-big">あそぶ！</button>
 
@@ -87,7 +95,7 @@
             <g id="g-num"></g>
             <g id="g-hint"></g>
           </svg>
-          <div id="castle"><span class="castle-emoji">🏰</span><div class="bandages"></div></div>
+          <div id="castle"><span class="castle-emoji">🏰</span></div>
           <div id="actors"></div>
           <div id="fx"></div>
           <div id="power" hidden>

@@ -97,8 +97,9 @@
       this.el.style.top = (this.y / VB * 100) + '%';
       this.el.style.setProperty('--s', this.size);
     }
-    face(dx) {
-      if (Math.abs(dx) > 0.2) this.body.classList.toggle('flip', dx > 0);
+    // たての せんで むきが ぱたぱた かわらないように、はっきり よこに うごく ときだけ むきを かえる
+    face(dx, min = 0.2) {
+      if (Math.abs(dx) > min) this.body.classList.toggle('flip', dx > 0);
     }
     set(x, y, size = this.size) {
       this.face(x - this.x);
@@ -284,13 +285,14 @@
   }
 
   // ---------- なぞる（にげる キャラを おいかける）----------
-  function trace(letter, actor) {
+  // キャラ（actor）は ゆびの ところ、ワニ（croc）は すこし さきを にげる
+  function trace(letter, actor, croc) {
     return new Promise((resolve, reject) => {
       const R = 14;      // ゆびが みちに ちかいと みなす はんけい
       const LOOK = 22;   // いちどに すすめる さいだい
-      const ahead = () => Math.round(11 * actor.speed);  // キャラは ゆびの すこし さきを にげる（ヒーローは はやい）
+      const AHEAD = 15;  // ワニは ゆびの すこし さきを にげる
       let si = 0, idx = 0, active = false, busy = false, lastBlip = 0;
-      let tx = actor.x, ty = actor.y;
+      let tx = actor.x, ty = actor.y, cx = croc.x, cy = croc.y;
       let lastProgress = performance.now();
       const ring = svgEl('circle', { r: 6, class: 'ring' });
       gHint.appendChild(ring);
@@ -301,12 +303,21 @@
         ring.setAttribute('cx', p.x);
         ring.setAttribute('cy', p.y);
       }
-      // キャラは めあての ばしょへ のろのろ ついていく
+      // キャラも ワニも めあての ばしょへ のろのろ ついていく（ヒーローは はやい）
       function placeActor() {
         const s = cur();
-        const p = s.pts[Math.min(s.pts.length - 1, idx + ahead())];
-        tx = p.x;
-        ty = p.y;
+        const p = s.pts[idx];
+        const q = s.pts[Math.min(s.pts.length - 1, idx + AHEAD)];
+        tx = p.x; ty = p.y;
+        cx = q.x; cy = q.y;
+      }
+      function step(a, x, y, rate, dt) {
+        const k = 1 - Math.pow(1 - rate, dt / 16.7);
+        const dx = x - a.x;
+        a.face(dx, 1.5);
+        a.x += dx * k;
+        a.y += (y - a.y) * k;
+        a.apply();
       }
       let raf = 0;
       let last = performance.now();
@@ -314,12 +325,8 @@
         const dt = Math.min(50, now - last);
         last = now;
         if (!busy) {
-          const k = 1 - Math.pow(1 - 0.035 * actor.speed, dt / 16.7);
-          const dx = tx - actor.x;
-          if (Math.abs(dx) > 0.4) actor.face(dx);
-          actor.x += dx * k;
-          actor.y += (ty - actor.y) * k;
-          actor.apply();
+          step(actor, tx, ty, 0.06 * actor.speed, dt);
+          step(croc, cx, cy, 0.035, dt);
         }
         raf = requestAnimationFrame(follow);
       }
@@ -354,17 +361,21 @@
         lastBlip = 0;
         ring.style.display = 'none';
         const n = cur();
-        const j = Math.min(n.pts.length - 1, ahead());
+        const j = Math.min(n.pts.length - 1, AHEAD);
         Sound.hop();
         actor.mode(null);
+        croc.mode('running');
         try {
-          await moveTo(actor, n.pts[j].x, n.pts[j].y, 450, { arc: 12 });
+          await Promise.all([
+            moveTo(croc, n.pts[j].x, n.pts[j].y, 450, { arc: 14 }),
+            moveTo(actor, n.pts[0].x, n.pts[0].y, 550, { arc: 12 }),
+          ]);
         } catch (e) { return; }
         actor.mode('wiggle');
+        croc.mode('wiggle');
         ring.style.display = '';
         placeRing();
-        tx = actor.x;
-        ty = actor.y;
+        placeActor();
         lastProgress = performance.now();
         busy = false;
       }
@@ -385,7 +396,7 @@
           await transform(actor);
           await moveTo(actor, x0, y0, 300, { size: s0 });
         } catch (err) { return; }
-        setMessage('ゆびで おいかけて なぞってね！');
+        setMessage('ゆびで なぞって ワニを おいかけよう！');
         actor.mode('wiggle');
         lastProgress = performance.now();
         busy = false;
@@ -421,6 +432,7 @@
         if (busy) return;
         active = true;
         actor.mode('running');
+        croc.mode('running');
         try { board.setPointerCapture(e.pointerId); } catch (_) { /* なくても よい */ }
         handlePoint(e);
       }
@@ -435,14 +447,18 @@
       }
       function onUp() {
         active = false;
-        if (!busy) actor.mode('wiggle');
+        if (!busy) {
+          actor.mode('wiggle');
+          croc.mode('wiggle');
+        }
       }
 
       // しばらく うごかないと キャラが よびかける
       const hintTimer = setInterval(() => {
         if (busy || active) return;
         if (performance.now() - lastProgress > 6000) {
-          actor.say(idx === 0 ? 'ここから おいかけて！' : 'こっちだよー！', 2000);
+          if (idx === 0) actor.say('まてまてー！', 1800);
+          else croc.say('こっちだもんねー！', 1800);
           lastProgress = performance.now();
         }
       }, 1000);
@@ -466,7 +482,9 @@
       cleanups.push(() => { finish(); reject(CANCEL); });
 
       actor.mode('wiggle');
+      croc.mode('wiggle');
       placeRing();
+      placeActor();
     });
   }
 
@@ -512,67 +530,82 @@
   }
 
   // ---------- おしろ ----------
-  // ワニの おしろ。ボードの そと（たてながの がめんでは うえ、よこながでは みぎ）に おく
-  const TAUNTS = [
-    'まだまだ やられないもんねー！',
-    'ぜんぜん いたくないもんねー！',
-    'いまのは くすぐったかった だけだもんねー！',
-    'つぎは そうは いかないもんねー！',
-    'おひめさまは わたさないもんねー！',
-    'たまたま あたった だけだもんねー！',
-    'サングラスが ずれた だけだもんねー！',
+  // ワニは だんごとに こぶんの おしろへ にげこむ。おしろは だんだん おおきく なり、
+  // さいごの だん（わ）は ワニの おしろ。ボードの そと（たてながでは うえ、よこながでは みぎ）に おく
+  const FLEE = [
+    'まだまだ やられないもんねー！ つぎの おしろへ にげるもんねー！',
+    'ぜんぜん いたくないもんねー！ さらばだもんねー！',
+    'いまのは くすぐったかった だけだもんねー！ にげろー！',
+    'つぎの おしろは もっと おおきいもんねー！',
+    'おひめさまは わたさないもんねー！ すたこらさっさー！',
+    'たまたま だもんねー！ つぎは まけないもんねー！',
+    'サングラスが ずれた だけだもんねー！ にげるが かちだもんねー！',
     'きょうは ちょうしが わるい だけだもんねー！',
-    'ばんそうこう はれば へっちゃらだもんねー！',
-    'お、おしろが ゆれてる… き、きのせいだもんねー！',
+    'つぎは いよいよ ワニさまの おしろだもんねー！ こわいぞー！',
   ];
-  // ばんそうこうを はる ばしょ（おしろの なかの %）
-  const BANDAGE_SPOTS = [[30, 40, -10], [68, 34, 15], [50, 60, 5], [22, 68, -20], [78, 66, 25],
-    [44, 24, -5], [60, 80, 10], [32, 86, -15], [74, 88, 20], [52, 42, 30]];
-  const BANDAGE_SVG =
-    '<svg viewBox="0 0 40 40">' + [45, -45].map(r =>
-      `<g transform="rotate(${r} 20 20)"><rect x="2" y="13" width="36" height="14" rx="7" fill="#f6d7b0" stroke="#c08a56" stroke-width="1.5"/>` +
-      `<rect x="15" y="14" width="10" height="12" fill="#e9bd8c"/></g>`).join('') + '</svg>';
+  const ARRIVE = [
+    'くやしかったら ここまで おいでー！ だもんねー！',
+    'こんどの おしろは ちょっと おおきいもんねー！',
+    'ふっふっふ、ここなら みつからないもんねー！',
+    'こぶんたち、やっつけて くるもんねー！',
+    'この おしろは がんじょう だもんねー！',
+    'おひめさま、もう すぐ ワニさまの ものだもんねー！',
+    'ここまで くるとは なかなか やるもんねー…',
+    'こぶんの なかでも いちばん つよい おしろだもんねー！',
+    'ぜったいに こわせないもんねー！',
+    'ここが ワニさまの おしろだもんねー！ かかってこい！',
+  ];
 
   const castle = {
-    el: $('#castle'), x: VB * 0.85, y: -14, size: 24,
+    el: $('#castle'), x: VB * 0.85, y: -14, size: 24, stage: 0,
+    // その だんの おしろに する（あとの だんほど おおきい）
+    render(stage) {
+      this.stage = stage;
+      const last = stage === STAGES.length - 1;
+      this.el.classList.remove('broken', 'exploded', 'shake');
+      this.el.classList.toggle('boss-castle', last);
+      this.el.querySelector('.castle-emoji').textContent = last ? '🏯' : '🏰';
+      this.el.style.setProperty('--hue', last ? '0deg' : (stage * 37) + 'deg');
+      this.place();
+    },
     place() {
       const wrap = $('#board-wrap').getBoundingClientRect();
       const b = board.getBoundingClientRect();
       const u = VB / b.width;
       const above = (b.top - wrap.top) * u;
       const right = (wrap.right - b.right) * u;
-      if (above >= 22) {
-        this.size = Math.min(above * 0.92, 32);
-        this.x = VB - this.size / 2 - 4;
-        this.y = -above / 2;
-      } else if (right >= 22) {
-        this.size = Math.min(right * 0.8, 40);
+      const t = this.stage / (STAGES.length - 1);
+      if (above >= 18) {
+        const max = Math.min(above * 0.95, 36);
+        this.size = 13 + (max - 13) * t;
+        this.x = VB - Math.max(this.size, 18) / 2 - 3;
+        this.y = -this.size / 2 - 0.5;   // ボードの うえの ふちに たっている
+      } else if (right >= 20) {
+        const max = Math.min(right * 0.85, 46);
+        this.size = 14 + (max - 14) * t;
         this.x = VB + right / 2;
-        this.y = this.size / 2 + 6;
+        this.y = VB * 0.32 - this.size / 2;
       } else {
-        this.size = 18;
-        this.x = VB - 10;
-        this.y = 10;
+        this.size = 12 + 6 * t;
+        this.x = VB - this.size / 2 - 2;
+        this.y = this.size / 2 + 2;
       }
       this.el.style.left = (this.x / VB * 100) + '%';
       this.el.style.top = (this.y / VB * 100) + '%';
       this.el.style.setProperty('--s', this.size);
-    },
-    render(dmg, popLast = false) {
-      this.el.classList.remove('exploded');
-      this.el.querySelector('.bandages').innerHTML = BANDAGE_SPOTS.slice(0, dmg).map(([x, y, r], i) =>
-        `<span class="bandage${popLast && i === dmg - 1 ? ' new' : ''}" style="left:${x}%;top:${y}%;--r:${r}deg">${BANDAGE_SVG}</span>`).join('');
     },
     shake() {
       this.el.classList.remove('shake');
       void this.el.offsetWidth;
       this.el.classList.add('shake');
     },
+    collapse() {
+      this.el.classList.add('broken');
+    },
     explode() {
       this.el.classList.add('exploded');
     },
   };
-  const damage = () => save.cleared.length;
   window.addEventListener('resize', () => castle.place());
 
   function makeCroc(size) {
@@ -580,6 +613,13 @@
     a.el.classList.add('croc');
     a.rig.insertAdjacentHTML('beforeend', '<span class="shades">🕶️</span>');
     a.size = size;
+    return a;
+  }
+  // おひめさまを せなかに のせた ワニ
+  function makeCarrier(size) {
+    const a = makeCroc(size);
+    a.el.classList.add('carrier');
+    a.rig.insertAdjacentHTML('beforeend', '<span class="rider">🐜<i>👑</i></span>');
     return a;
   }
   function makePrincess(size) {
@@ -590,11 +630,11 @@
     return a;
   }
 
-  // おしろから ワニが かおを だして くやしがる
+  // おしろから ワニが かおを だす
   async function crocTaunt(text) {
-    const croc = makeCroc(castle.size * 0.8);
+    const croc = makeCarrier(Math.max(castle.size * 0.8, 16));
     croc.el.classList.add('peek');
-    croc.set(castle.x, castle.y + castle.size * 0.1, castle.size * 0.8);
+    croc.set(castle.x, castle.y + castle.size * 0.1, croc.size);
     croc.face(-1);
     croc.once('popin');
     croc.say(text, 3200, { below: true });
@@ -676,21 +716,35 @@
     castle.shake();
     Sound.boom();
     sparks(castle.x, castle.y, 10, ['💥', '⭐', '💫']);
-    if (ctx.newBandage) {
-      castle.render(ctx.damageAfter, true);
-      Sound.clank();
-    }
-    setMessage('おしろに ダメージ！');
-    await sleep(1200);
+    await sleep(900);
     if (ctx.finaleDue) {
       Sound.rumble();
       castle.shake();
       setMessage('おしろが ゴゴゴゴ… ゆれてる！');
       await sleep(1600);
-    } else {
-      const text = ctx.newBandage ? TAUNTS[ctx.damageAfter - 1] : TAUNTS[Math.floor(Math.random() * TAUNTS.length)];
-      await crocTaunt(text);
+      return;
     }
+    // おしろが こわれて、ワニは つぎの おしろへ にげる
+    castle.collapse();
+    Sound.rumble();
+    Sound.boom();
+    sparks(castle.x, castle.y, 12, ['💥', '💨', '🧱']);
+    setMessage('おしろが こわれた！');
+    Sound.say('おしろが こわれた！', { pitch: 1.4 });
+    await sleep(1400);
+    const croc = makeCarrier(Math.max(castle.size * 0.7, 16));
+    croc.set(castle.x, castle.y, croc.size);
+    croc.face(-1);
+    croc.once('popin');
+    const text = FLEE[ctx.stageIdx % FLEE.length];
+    croc.say(text, 3200, { below: true });
+    setMessage(text);
+    Sound.say(text, { pitch: 0.7, rate: 1.05 });
+    await sleep(3300);
+    croc.mode('running');
+    croc.say('すたこら さっさー！', 1200, { below: true });
+    await moveTo(croc, offscreenX(1), castle.y, 900, { ease: easeIn });
+    croc.remove();
   }
 
   // れんだで おしかえす
@@ -810,7 +864,6 @@
 
   // ---------- オープニング ----------
   async function intro() {
-    castle.render(damage());
     const y = VB * 0.6;
     setMessage('');
     const princess = makePrincess(24);
@@ -1042,40 +1095,72 @@
     actor.say(song, 2600);
     setMessage(song);
     Sound.sing(c, info.word);
-    await sleep(500);
+    await sleep(2200);
+
+    // キャラは いったん かくれて…
+    actor.mode(null);
+    await moveTo(actor, actor.x, actor.y - 6, 300, { size: 1 });
+    actor.el.style.visibility = 'hidden';
 
     const letter = buildLetter(c, color);
     addNumbers(letter);
-    const DEMO_SIZE = 15;
 
-    // かきじゅんどおりに にげていく（おてほん）
-    actor.mode('running');
-    Sound.whoosh();
+    // ワニが おひめさまを つれて、ひらがなの かたちに にげていく（おてほん）
+    const croc = makeCarrier(Math.max(castle.size * 0.4, 8));
+    croc.set(castle.x, castle.y, croc.size);
+    castle.shake();
+    Sound.door();
+    croc.mode('running');
+    croc.say('ワニワニ〜！', 1500);
+    Sound.say('ワニワニー！', { pitch: 0.7, rate: 1.1 });
+    setMessage('ワニが にげていく！');
+    const CROC_SIZE = 18;
     for (const s of letter) {
-      await moveTo(actor, s.pts[0].x, s.pts[0].y, 500, { size: DEMO_SIZE, arc: 14 });
+      await moveTo(croc, s.pts[0].x, s.pts[0].y, 500, { size: CROC_SIZE, arc: 14 });
       // はしった あとに せんが のこる（おわったら てんせんに もどす）
       s.demo.style.opacity = 1;
-      const dur = Math.max(700, s.len * 20) / actor.speed;
+      const dur = Math.max(700, s.len * 20);
       await tween(dur, t => {
         const k = Math.min(s.pts.length - 1, Math.round(t * (s.pts.length - 1)));
         const p = s.pts[k];
-        const q = s.pts[Math.min(s.pts.length - 1, k + 2)];
-        actor.x = p.x; actor.y = p.y; actor.apply();
-        actor.face(q.x - p.x);
+        const q = s.pts[Math.min(s.pts.length - 1, k + 6)];
+        croc.x = p.x; croc.y = p.y; croc.apply();
+        croc.face(q.x - p.x, 2);
         s.demo.style.strokeDasharray = `${t * s.len} ${s.len}`;
       }, linear);
       s.demo.style.strokeDasharray = '';
     }
 
-    // さいしょの かくの ところで まつ
+    // ワニは 1かくめの すこし さきで まつ
     const first = letter[0];
-    const j = Math.min(first.pts.length - 1, 11);
-    await moveTo(actor, first.pts[j].x, first.pts[j].y, 600, { arc: 16 });
-    actor.mode('wiggle');
-    actor.say('つかまえてごらん！', 2000);
-    setMessage('ゆびで おいかけて なぞってね！');
+    const j = Math.min(first.pts.length - 1, 15);
+    await moveTo(croc, first.pts[j].x, first.pts[j].y, 600, { arc: 16 });
+    croc.mode('wiggle');
+    croc.say('ここまで おいでー！', 1800);
+    Sound.say('ここまで おいでー！', { pitch: 0.7 });
+    await sleep(900);
 
-    await trace(letter, actor);
+    // ひらがなの さきっぽに キャラが あらわれる
+    actor.el.style.visibility = '';
+    actor.set(first.pts[0].x, first.pts[0].y, 15);
+    actor.once('popin');
+    Sound.pop();
+    actor.mode('wiggle');
+    actor.face(first.pts[j].x - first.pts[0].x);
+    actor.say('まてまてー！', 1800);
+    Sound.say('まてまてー！', { pitch: 1.6 });
+    setMessage('ゆびで なぞって ワニを おいかけよう！');
+
+    await trace(letter, actor, croc);
+
+    // ワニは おしろへ にげかえる
+    croc.mode('running');
+    croc.say('にげろ〜！', 1200);
+    Sound.whoosh();
+    await moveTo(croc, castle.x, castle.y, 800, { size: Math.max(castle.size * 0.4, 8), arc: 24 });
+    croc.remove();
+    castle.shake();
+    Sound.door();
 
     // 3こめと 5こめは おしろから わるものが でてくる
     if (fight) await battle(actor, fight, ctx);
@@ -1200,8 +1285,7 @@
     showOverlay('#overlay-ending', false);
     showScreen('screen-play');
     resizeBoard();
-    castle.place();
-    castle.render(damage());
+    castle.render(stageIdx);
     clearLetter();
     $('#actors').innerHTML = '';
     $('#fx').innerHTML = '';
@@ -1214,16 +1298,12 @@
     label.style.background = stage.color;
     renderProgress(order, 0);
 
-    // この だんで おしろに ばんそうこうが ふえるか、さいごの たたかいに なるか
-    const after = new Set([...save.cleared, stageIdx]).size;
-    const ctx = {
-      newBandage: !save.cleared.includes(stageIdx),
-      damageAfter: after,
-      finaleDue: after === STAGES.length && (!save.cleared.includes(stageIdx) || stageIdx === STAGES.length - 1),
-    };
+    // さいごの だん（わ）は ワニの おしろ → ボスせん
+    const ctx = { stageIdx, finaleDue: stageIdx === STAGES.length - 1 };
 
     try {
       if (stageIdx === 0 && !save.introSeen) await intro();
+      else await crocTaunt(ARRIVE[stageIdx]);
       let actor = new Actor(order[0]);
       actor.set(VB / 2, VB / 2, 34);
       actor.once('popin');
@@ -1354,10 +1434,11 @@
       }
       map.appendChild(b);
     });
-    const d = damage();
+    const d = save.cleared.length;
     $('#castle-status').innerHTML = save.ending
       ? '👑 おひめさまを たすけた！ <small>（もういちど あそべるよ）</small>'
-      : `🏰 ワニの おしろ <span class="cs-bars">${'✚'.repeat(d)}<i>${'✚'.repeat(STAGES.length - d)}</i></span> ${d}/${STAGES.length}`;
+      : `こわした おしろ <span class="cs-bars">${'🏚️'.repeat(d)}<i>${'🏰'.repeat(Math.max(0, STAGES.length - 1 - d))}</i>${d < STAGES.length ? '🏯' : ''}</span>`;
+    $('#title-scene').classList.toggle('saved', !!save.ending);
     $('#zukan-count').textContent = `${Object.keys(save.caught).length}/${Object.keys(WORDS).length}`;
   }
 
@@ -1422,7 +1503,7 @@
     enterPlayHistory();
     showScreen('screen-play');
     resizeBoard();
-    castle.place();
+    castle.render(0);
     clearLetter();
     $('#actors').innerHTML = '';
     $('#fx').innerHTML = '';
