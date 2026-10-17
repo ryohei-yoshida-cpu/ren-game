@@ -17,6 +17,22 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <!-- メダルと ぶきの いろ -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="md-B" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f8cfa8"/><stop offset=".45" stop-color="#cd7f32"/><stop offset="1" stop-color="#7f4518"/></linearGradient>
+      <linearGradient id="md-S" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#c3cad3"/><stop offset="1" stop-color="#77818d"/></linearGradient>
+      <linearGradient id="md-G" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff6b0"/><stop offset=".45" stop-color="#ffc928"/><stop offset="1" stop-color="#a87400"/></linearGradient>
+      <linearGradient id="md-P" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#e3eefa"/><stop offset=".6" stop-color="#c9d6f2"/><stop offset=".8" stop-color="#e8f4ff"/><stop offset="1" stop-color="#8ea3c4"/></linearGradient>
+      <linearGradient id="md-R" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ff5e5e"/><stop offset=".17" stop-color="#ffa94d"/><stop offset=".33" stop-color="#ffe14d"/>
+        <stop offset=".5" stop-color="#6ee07a"/><stop offset=".67" stop-color="#4dc3ff"/><stop offset=".83" stop-color="#6b7bff"/><stop offset="1" stop-color="#d36bff"/>
+        <animateTransform attributeName="gradientTransform" type="rotate" from="0 .5 .5" to="360 .5 .5" dur="6s" repeatCount="indefinite"/>
+      </linearGradient>
+      <linearGradient id="hx-blade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8d9bab"/><stop offset=".5" stop-color="#ffffff"/><stop offset="1" stop-color="#9aa8b8"/></linearGradient>
+    </defs>
+  </svg>
+
   <div id="app">
 
     <!-- タイトル -->
@@ -34,12 +50,16 @@
         <button class="mode" data-mode="random">🎲 ランダム</button>
       </div>
 
+      <button id="btn-hero-mode" class="hero-toggle" aria-pressed="false">
+        <span class="hero-toggle-label">🦸 ヒーローモード</span><span class="hero-toggle-sw"></span>
+      </button>
+
       <div id="stage-map" class="stage-map"></div>
 
       <button id="btn-install" class="btn btn-soft" hidden>📲 ホームがめんに ついか</button>
 
       <div class="title-foot">
-        <button id="btn-zukan" class="btn btn-soft">📖 ずかん <span id="zukan-count"></span></button>
+        <button id="btn-zukan" class="btn btn-soft">🏅 メダル <span id="zukan-count"></span></button>
         <button id="btn-reset" class="btn-tiny">さいしょから（おとなよう）</button>
       </div>
       <p class="credit">ひらがなの かきじゅん: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> (CC BY-SA 3.0)</p>
@@ -68,7 +88,9 @@
           </svg>
           <div id="actors"></div>
           <div id="fx"></div>
+          <div id="medal-pop"><div class="mp-medal"></div><div class="mp-label"></div></div>
         </div>
+        <button id="btn-henshin" class="btn btn-hero" hidden>⚡ ヒーロー へんしん！ ⚡</button>
       </div>
       <div id="message" class="message"></div>
     </section>
@@ -101,12 +123,23 @@
       </div>
     </div>
 
-    <!-- ずかん -->
+    <!-- メダル コレクション -->
     <div id="overlay-zukan" class="overlay">
       <div class="panel panel-wide">
-        <div class="zukan-title">📖 ひらがな ずかん</div>
+        <div class="zukan-title">🏅 ひらがな メダル</div>
+        <div id="medal-summary" class="medal-summary"></div>
         <div id="zukan-grid" class="zukan-grid"></div>
         <button id="btn-zukan-close" class="btn btn-soft">とじる</button>
+      </div>
+      <div id="medal-detail" class="medal-detail">
+        <div class="panel">
+          <div class="md-big"></div>
+          <div class="md-word"></div>
+          <div class="md-count"></div>
+          <div class="md-goal"></div>
+          <div class="md-ladder"></div>
+          <button id="btn-detail-close" class="btn btn-soft">もどる</button>
+        </div>
       </div>
     </div>
 
@@ -115,6 +148,8 @@
   <script src="js/strokes.js"></script>
   <script src="js/data.js"></script>
   <script src="js/sound.js"></script>
+  <script src="js/hero.js"></script>
+  <script src="js/medal.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

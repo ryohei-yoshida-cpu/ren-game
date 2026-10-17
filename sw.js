@@ -11,6 +11,8 @@ const FILES = [
   './js/strokes.js',
   './js/data.js',
   './js/sound.js',
+  './js/hero.js',
+  './js/medal.js',
   './js/game.js',
   './icons/icon-192.png',
   './icons/icon-512.png',

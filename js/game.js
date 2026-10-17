@@ -5,11 +5,12 @@
   const SAVE_KEY = 'hiragana-oikakekko-v1';
   const SVGNS = 'http://www.w3.org/2000/svg';
   const $ = s => document.querySelector(s);
-  const { WORDS, STAGES, STROKES, Sound } = window;
+  const { WORDS, STAGES, STROKES, Sound, Hero, Medal } = window;
+  const HERO_SPEED = 1.3;
 
   // ---------- セーブ ----------
   function defaultSave() {
-    return { unlocked: 0, cleared: [], caught: {}, mode: 'order' };
+    return { unlocked: 0, cleared: [], caught: {}, mode: 'order', hero: false };
   }
   function loadSave() {
     try {
@@ -77,11 +78,13 @@
       const el = document.createElement('div');
       el.className = 'actor';
       el.innerHTML =
-        `<div class="body"><span class="emoji">${this.info.emoji}</span></div>` +
+        `<div class="body"><div class="rig"><span class="emoji">${this.info.emoji}</span></div></div>` +
         `<span class="badge">${c}</span><div class="bubble"></div>`;
       $('#actors').appendChild(el);
       this.el = el;
       this.body = el.querySelector('.body');
+      this.rig = el.querySelector('.rig');
+      this.costume = null;
       this.bubbleEl = el.querySelector('.bubble');
       this.x = VB / 2;
       this.y = VB / 2;
@@ -119,13 +122,37 @@
       clearTimeout(this.bubbleTimer);
       this.bubbleTimer = setTimeout(() => this.bubbleEl.classList.remove('show'), ms);
     }
+    // ヒーローの すがたに なる
+    equip(k) {
+      this.costume = k;
+      this.el.classList.add('hero', 'gear-' + k.gear);
+      this.el.style.setProperty('--hero', k.color.main);
+      this.rig.insertAdjacentHTML('afterbegin', Hero.gearSVG(k));
+      this.rig.insertAdjacentHTML('beforeend', Hero.helmetSVG(k));
+    }
+    // ぶきを だして ポーズ
+    pose(p) {
+      const color = Hero.beamColor();
+      p.weapons.forEach((w, i) => {
+        const el = document.createElement('div');
+        el.className = `weapon w${i}`;
+        el.innerHTML = Hero.weaponSVG(w, color);
+        this.rig.appendChild(el);
+      });
+      this.el.classList.add('posing', 'pose-' + p.id);
+    }
+    unpose() {
+      this.rig.querySelectorAll('.weapon').forEach(w => w.remove());
+      [...this.el.classList].filter(k => k === 'posing' || k.startsWith('pose-')).forEach(k => this.el.classList.remove(k));
+    }
+    get speed() { return this.costume ? HERO_SPEED : 1; }
     remove() { this.el.remove(); }
   }
 
   async function moveTo(actor, x, y, ms, { size = actor.size, arc = 0, ease = easeInOut } = {}) {
     const x0 = actor.x, y0 = actor.y, s0 = actor.size;
     actor.face(x - x0);
-    await tween(ms, t => {
+    await tween(ms / actor.speed, t => {
       actor.x = x0 + (x - x0) * t;
       actor.y = y0 + (y - y0) * t - Math.sin(Math.PI * t) * arc;
       actor.size = s0 + (size - s0) * t;
@@ -235,11 +262,11 @@
   }
 
   // ---------- タップを まつ ----------
-  function waitTap() {
+  function waitTap(target = board) {
     return new Promise((resolve, reject) => {
       const on = () => { off(); resolve(); };
-      const off = () => board.removeEventListener('pointerdown', on);
-      board.addEventListener('pointerdown', on);
+      const off = () => target.removeEventListener('pointerdown', on);
+      target.addEventListener('pointerdown', on);
       cleanups.push(() => { off(); reject(CANCEL); });
     });
   }
@@ -249,7 +276,7 @@
     return new Promise((resolve, reject) => {
       const R = 14;      // ゆびが みちに ちかいと みなす はんけい
       const LOOK = 22;   // いちどに すすめる さいだい
-      const AHEAD = 11;  // キャラは ゆびの すこし さきを にげる
+      const AHEAD = Math.round(11 * actor.speed);  // キャラは ゆびの すこし さきを にげる（ヒーローは はやい）
       let si = 0, idx = 0, active = false, busy = false, lastBlip = 0;
       let lastProgress = performance.now();
       const ring = svgEl('circle', { r: 6, class: 'ring' });
@@ -282,6 +309,13 @@
         s.ink.style.strokeDashoffset = 0;
         Sound.chime(si);
         sparks(s.pts[s.pts.length - 1].x, s.pts[s.pts.length - 1].y, 5);
+        ring.style.display = 'none';
+        // ヒーローは かくの はしで ぶきを だして かっこつける
+        if (actor.costume) {
+          try {
+            await heroPose(actor, si === letter.length - 1);
+          } catch (e) { return; }
+        }
         si++;
         if (si >= letter.length) {
           finish();
@@ -376,9 +410,93 @@
     });
   }
 
+  // ---------- ヒーロー ----------
+  async function henshin(actor) {
+    actor.mode('idle');
+    setMessage('ボタンで へんしんだ！');
+    const btn = $('#btn-henshin');
+    btn.hidden = false;
+    try {
+      await waitTap(btn);
+    } finally {
+      btn.hidden = true;
+    }
+    const k = Hero.costume(actor.info.word);
+    Sound.henshin();
+    Sound.say('ヒーロー へんしん！', { pitch: 1.3, rate: 1.1 });
+    setMessage('ヒーロー へんしん！');
+    board.classList.remove('flash');
+    void board.offsetWidth;
+    board.classList.add('flash');
+    actor.mode(null);
+    actor.el.classList.add('henshin');
+    sparks(actor.x, actor.y, 10, ['⚡', '✨', '⭐']);
+    await sleep(1100);
+    actor.el.classList.remove('henshin');
+    actor.equip(k);
+    Sound.clank();
+    await sleep(450);
+    if (k.gear === 'jet') Sound.jet(); else Sound.whoosh();
+    await heroPose(actor, true);
+    actor.say(`${k.name} さんじょう！`, 2400);
+    setMessage(`${k.name} さんじょう！`);
+    Sound.say(`${k.name}、さんじょう！`, { pitch: 1.2, rate: 1.05 });
+    actor.mode('idle');
+    await sleep(2000);
+  }
+
+  async function heroPose(actor, big) {
+    const p = Hero.pickPose();
+    const x0 = actor.x, y0 = actor.y, s0 = actor.size;
+    const S = Math.max(s0 * 1.6, 24);
+    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+    actor.mode(null);
+    await moveTo(actor, clamp(x0, S / 2, VB - S / 2), clamp(y0 - 4, S / 2 + 4, VB - S / 2), 220, { size: S, ease: easeOutBack });
+    actor.pose(p);
+    Sound[p.sfx]();
+    actor.say(p.phrase, big ? 1400 : 1000);
+    Sound.say(p.phrase, { pitch: 1.3, rate: 1.2 });
+    setTimeout(() => sparks(actor.x, actor.y - S / 3, big ? 10 : 6, ['✨', '⭐', '💥']), 300);
+    await sleep(big ? 1500 : 1050);
+    actor.unpose();
+    await moveTo(actor, x0, y0, 200, { size: s0 });
+  }
+
+  // ---------- メダル ゲット ----------
+  async function medalGet(c) {
+    const n = save.caught[c];
+    const prev = n - 1;
+    const upgrade = prev > 0 && Medal.step(prev) !== Medal.step(n);
+    const pop = $('#medal-pop');
+    const m = pop.querySelector('.mp-medal');
+    const label = pop.querySelector('.mp-label');
+    m.innerHTML = Medal.svg(c, upgrade ? prev : n);
+    label.textContent = '';
+    pop.classList.remove('show');
+    void pop.offsetWidth;
+    pop.classList.add('show');
+    Sound.medal();
+    await sleep(700);
+    if (upgrade) {
+      m.classList.add('spin');
+      await sleep(400);
+      m.innerHTML = Medal.svg(c, n);
+      await sleep(400);
+      m.classList.remove('spin');
+      Sound.medalUp();
+    }
+    label.innerHTML = `${Medal.message(n)}<small>${n}かいめ ・ ${Medal.nextGoal(n)}</small>`;
+    sparks(VB / 2, VB * 0.42, 10, ['✨', '⭐', '🌟']);
+    Sound.say(Medal.message(n), { pitch: 1.4 });
+    await sleep(2300);
+    pop.classList.remove('show');
+    await sleep(250);
+  }
+
   // ---------- ひらがな ひとつぶん ----------
   async function playLetter(c, color, actor) {
     const info = WORDS[c];
+    if (save.hero && !actor.costume) await henshin(actor);
     actor.mode('idle');
     setMessage(`${info.emoji} を タップしてね！`);
     await waitTap();
@@ -404,7 +522,7 @@
       await moveTo(actor, s.pts[0].x, s.pts[0].y, 500, { size: DEMO_SIZE, arc: 14 });
       // はしった あとに せんが のこる（おわったら てんせんに もどす）
       s.demo.style.opacity = 1;
-      const dur = Math.max(450, s.len * 12);
+      const dur = Math.max(450, s.len * 12) / actor.speed;
       await tween(dur, t => {
         const k = Math.min(s.pts.length - 1, Math.round(t * (s.pts.length - 1)));
         const p = s.pts[k];
@@ -435,7 +553,8 @@
     actor.say(`${c}！`, 1500);
     Sound.sing(c, info.word);
     markCaught(c);
-    await sleep(2400);
+    await sleep(2300);
+    await medalGet(c);
   }
 
   // ---------- ごっつんこ して こうたい ----------
@@ -549,6 +668,8 @@
     clearLetter();
     $('#actors').innerHTML = '';
     $('#fx').innerHTML = '';
+    $('#medal-pop').classList.remove('show');
+    $('#btn-henshin').hidden = true;
     const label = $('#stage-label');
     label.textContent = `${stage.name} の だん`;
     label.style.background = stage.color;
@@ -639,8 +760,9 @@
     const n = caughtToday.length;
     const total = Object.keys(save.caught).length;
     $('#overlay-bye .bye-text').innerHTML =
-      `きょうは <b>${n}こ</b> つかまえたよ！<br>ずかん ${total} / ${Object.keys(WORDS).length}`;
-    $('#overlay-bye .bye-parade').innerHTML = caughtToday.map(c => `<span>${WORDS[c].emoji}</span>`).join('');
+      `きょうは <b>${n}こ</b> つかまえたよ！<br>メダル ${total} / ${Object.keys(WORDS).length}`;
+    $('#overlay-bye .bye-parade').innerHTML =
+      [...new Set(caughtToday)].map(c => `<span class="mini-medal">${Medal.svg(c, save.caught[c])}</span>`).join('');
     showOverlay('#overlay-bye', true);
     Sound.say('きょうも がんばったね。また あしたね！', { pitch: 1.4 });
   }
@@ -655,6 +777,8 @@
 
   function renderTitle() {
     document.querySelectorAll('.mode').forEach(b => b.classList.toggle('on', b.dataset.mode === save.mode));
+    $('#btn-hero-mode').classList.toggle('on', !!save.hero);
+    $('#btn-hero-mode').setAttribute('aria-pressed', String(!!save.hero));
     const map = $('#stage-map');
     map.innerHTML = '';
     const nx = nextStageIdx();
@@ -683,24 +807,54 @@
     if (!fromBack && history.state && history.state.play) history.back();
     ['#overlay-clear', '#overlay-bye', '#overlay-zukan'].forEach(id => showOverlay(id, false));
     $('#actors').innerHTML = '';
+    $('#btn-henshin').hidden = true;
+    $('#medal-detail').classList.remove('show');
     clearLetter();
     renderTitle();
     showScreen('screen-title');
   }
 
+  // ---------- メダル コレクション ----------
   function renderZukan() {
+    const all = Object.keys(WORDS);
+    $('#medal-summary').innerHTML = Medal.GOALS.map(([k, name]) => {
+      const cnt = all.filter(c => (save.caught[c] || 0) >= k).length;
+      return `<div class="ms-item">${Medal.svg('', k, 'ms-medal')}<b>${cnt}</b><span>${name}</span></div>`;
+    }).join('');
     const grid = $('#zukan-grid');
     grid.innerHTML = '';
     STAGES.forEach(st => {
       const row = document.createElement('div');
       row.className = 'zukan-row';
       st.chars.forEach(c => {
-        const got = save.caught[c];
-        row.insertAdjacentHTML('beforeend',
-          `<div class="zukan-cell${got ? ' got' : ''}">${c}${got ? `<span class="z-emoji">${WORDS[c].emoji}</span>` : ''}</div>`);
+        const n = save.caught[c] || 0;
+        const b = document.createElement('button');
+        b.className = 'medal-cell' + (n ? ' got' : '');
+        b.innerHTML = Medal.svg(c, n) + `<span class="mc-count">${n ? `×${n}` : ''}</span>`;
+        b.onclick = () => showMedalDetail(c);
+        row.appendChild(b);
       });
       grid.appendChild(row);
     });
+  }
+
+  function showMedalDetail(c) {
+    const n = save.caught[c] || 0;
+    const d = $('#medal-detail');
+    d.querySelector('.md-big').innerHTML = Medal.svg(c, n);
+    d.querySelector('.md-word').innerHTML = n
+      ? `${WORDS[c].emoji} ${c} … ${WORDS[c].word}の ${c}`
+      : `${c} は まだ つかまえて いないよ`;
+    d.querySelector('.md-count').textContent = n ? `${n}かい クリア` : '';
+    d.querySelector('.md-goal').textContent = Medal.nextGoal(n);
+    let ladder = '';
+    for (let i = 1; i <= Medal.MAX; i++) {
+      ladder += `<div class="ld${i <= n ? ' done' : ''}${i === Math.min(n, Medal.MAX) ? ' now' : ''}">` +
+        `${Medal.svg(c, i)}<span>${i}</span></div>`;
+    }
+    d.querySelector('.md-ladder').innerHTML = ladder;
+    d.classList.add('show');
+    if (n) Sound.say(`${WORDS[c].word}の ${c}`, { pitch: 1.4 });
   }
 
   // ---------- ボタン ----------
@@ -712,8 +866,19 @@
   });
   $('#btn-zukan').onclick = () => { renderZukan(); showOverlay('#overlay-zukan', true); };
   $('#btn-zukan-close').onclick = () => showOverlay('#overlay-zukan', false);
+  $('#btn-detail-close').onclick = () => $('#medal-detail').classList.remove('show');
+  $('#btn-hero-mode').onclick = () => {
+    Sound.unlock();
+    save.hero = !save.hero;
+    writeSave();
+    renderTitle();
+    if (save.hero) {
+      Sound.henshin();
+      Sound.say('ヒーローモード！', { pitch: 1.3 });
+    }
+  };
   $('#btn-reset').onclick = () => {
-    if (confirm('すすんだ ステージと ずかんを ぜんぶ けして さいしょから に しますか？')) {
+    if (confirm('すすんだ ステージと メダルを ぜんぶ けして さいしょから に しますか？')) {
       save = defaultSave();
       writeSave();
       renderTitle();

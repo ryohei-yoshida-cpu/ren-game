@@ -136,6 +136,54 @@ window.Sound = (() => {
     caught() {
       [72, 76, 79, 84].forEach((m, i) => tone(midi(m), i * 0.09, 0.3, { type: 'triangle', vol: 0.16 }));
     },
+    // ---- ヒーロー ----
+    henshin() {
+      tone(200, 0, 0.9, { type: 'square', vol: 0.06, slide: 8 });
+      noise(0, 0.9, { vol: 0.15, freq: 3000 });
+      [72, 76, 79, 84, 88, 91].forEach((m, i) => tone(midi(m), 0.5 + i * 0.06, 0.25, { type: 'triangle', vol: 0.12 }));
+    },
+    clank() {
+      tone(900, 0, 0.12, { type: 'square', vol: 0.08, slide: 0.7 });
+      noise(0, 0.1, { vol: 0.35, freq: 5000 });
+      tone(1400, 0.05, 0.3, { type: 'sine', vol: 0.1 });
+    },
+    jet() {
+      noise(0, 0.9, { vol: 0.3, freq: 500 });
+      tone(90, 0, 0.9, { type: 'sawtooth', vol: 0.05, slide: 1.8 });
+    },
+    sword() {
+      noise(0, 0.12, { vol: 0.3, freq: 6000 });
+      tone(2400, 0.02, 0.6, { type: 'sine', vol: 0.08 });
+      tone(3300, 0.04, 0.5, { type: 'sine', vol: 0.06 });
+    },
+    slash() {
+      noise(0, 0.22, { vol: 0.45, freq: 2500 });
+      tone(1200, 0, 0.2, { type: 'triangle', vol: 0.1, slide: 0.25 });
+      tone(2600, 0.2, 0.4, { type: 'sine', vol: 0.06 });
+    },
+    saber() {
+      tone(110, 0, 0.8, { type: 'sawtooth', vol: 0.07, slide: 1.4 });
+      tone(220, 0, 0.5, { type: 'sine', vol: 0.1, slide: 2 });
+      noise(0, 0.3, { vol: 0.15, freq: 1500 });
+    },
+    laser() {
+      tone(1600, 0.15, 0.25, { type: 'square', vol: 0.08, slide: 0.12 });
+      tone(1600, 0.3, 0.25, { type: 'square', vol: 0.06, slide: 0.12 });
+      noise(0.15, 0.1, { vol: 0.2, freq: 4000 });
+    },
+    twirl() {
+      [600, 800, 1000, 1200, 1400].forEach((f, i) => tone(f, i * 0.06, 0.08, { type: 'sine', vol: 0.08 }));
+      [72, 79, 84].forEach(m => tone(midi(m), 0.4, 0.4, { type: 'triangle', vol: 0.1 }));
+    },
+    // ---- メダル ----
+    medal() {
+      tone(988, 0, 0.1, { type: 'square', vol: 0.07 });
+      tone(1319, 0.09, 0.45, { type: 'square', vol: 0.07 });
+    },
+    medalUp() {
+      [72, 76, 79, 84, 88, 91, 96].forEach((m, i) => tone(midi(m), i * 0.05, 0.3, { type: 'triangle', vol: 0.1 }));
+      noise(0, 0.5, { vol: 0.1, freq: 7000 });
+    },
     fanfare() {
       const seq = [[67, 0], [72, 0.15], [76, 0.3], [79, 0.45], [76, 0.65], [79, 0.8]];
       seq.forEach(([m, t]) => tone(midi(m), t, 0.25, { type: 'square', vol: 0.07 }));
