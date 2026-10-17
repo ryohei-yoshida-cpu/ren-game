@@ -7,10 +7,11 @@
   const $ = s => document.querySelector(s);
   const { WORDS, STAGES, STROKES, Sound, Hero, Medal } = window;
   const HERO_SPEED = 1.3;
+  const PACE = 1.6;   // うごきの ゆっくりさ（おおきいほど のろのろ）
 
   // ---------- セーブ ----------
   function defaultSave() {
-    return { unlocked: 0, cleared: [], caught: {}, mode: 'order', hero: false };
+    return { unlocked: 0, cleared: [], caught: {}, mode: 'order' };
   }
   function loadSave() {
     try {
@@ -72,14 +73,14 @@
 
   // ---------- キャラクター ----------
   class Actor {
-    constructor(c) {
+    constructor(c, info = WORDS[c]) {
       this.c = c;
-      this.info = WORDS[c];
+      this.info = info;
       const el = document.createElement('div');
       el.className = 'actor';
       el.innerHTML =
         `<div class="body"><div class="rig"><span class="emoji">${this.info.emoji}</span></div></div>` +
-        `<span class="badge">${c}</span><div class="bubble"></div>`;
+        (c ? `<span class="badge">${c}</span>` : '') + `<div class="bubble"></div>`;
       $('#actors').appendChild(el);
       this.el = el;
       this.body = el.querySelector('.body');
@@ -105,7 +106,7 @@
       this.apply();
     }
     mode(cls) {
-      this.el.classList.remove('idle', 'running', 'wiggle', 'happy');
+      this.el.classList.remove('idle', 'running', 'wiggle', 'happy', 'push');
       if (cls) this.el.classList.add(cls);
     }
     once(cls) {
@@ -152,7 +153,7 @@
   async function moveTo(actor, x, y, ms, { size = actor.size, arc = 0, ease = easeInOut } = {}) {
     const x0 = actor.x, y0 = actor.y, s0 = actor.size;
     actor.face(x - x0);
-    await tween(ms / actor.speed, t => {
+    await tween(ms * PACE / actor.speed, t => {
       actor.x = x0 + (x - x0) * t;
       actor.y = y0 + (y - y0) * t - Math.sin(Math.PI * t) * arc;
       actor.size = s0 + (size - s0) * t;
@@ -276,8 +277,9 @@
     return new Promise((resolve, reject) => {
       const R = 14;      // ゆびが みちに ちかいと みなす はんけい
       const LOOK = 22;   // いちどに すすめる さいだい
-      const AHEAD = Math.round(11 * actor.speed);  // キャラは ゆびの すこし さきを にげる（ヒーローは はやい）
+      const ahead = () => Math.round(11 * actor.speed);  // キャラは ゆびの すこし さきを にげる（ヒーローは はやい）
       let si = 0, idx = 0, active = false, busy = false, lastBlip = 0;
+      let tx = actor.x, ty = actor.y;
       let lastProgress = performance.now();
       const ring = svgEl('circle', { r: 6, class: 'ring' });
       gHint.appendChild(ring);
@@ -288,14 +290,29 @@
         ring.setAttribute('cx', p.x);
         ring.setAttribute('cy', p.y);
       }
+      // キャラは めあての ばしょへ のろのろ ついていく
       function placeActor() {
         const s = cur();
-        const j = Math.min(s.pts.length - 1, idx + AHEAD);
-        const p = s.pts[j];
-        const q = s.pts[Math.min(s.pts.length - 1, j + 3)];
-        actor.set(p.x, p.y);
-        actor.face(q.x - p.x);
+        const p = s.pts[Math.min(s.pts.length - 1, idx + ahead())];
+        tx = p.x;
+        ty = p.y;
       }
+      let raf = 0;
+      let last = performance.now();
+      function follow(now) {
+        const dt = Math.min(50, now - last);
+        last = now;
+        if (!busy) {
+          const k = 1 - Math.pow(1 - 0.035 * actor.speed, dt / 16.7);
+          const dx = tx - actor.x;
+          if (Math.abs(dx) > 0.4) actor.face(dx);
+          actor.x += dx * k;
+          actor.y += (ty - actor.y) * k;
+          actor.apply();
+        }
+        raf = requestAnimationFrame(follow);
+      }
+      raf = requestAnimationFrame(follow);
       function render() {
         const s = cur();
         s.ink.style.strokeDashoffset = Math.max(0, s.len - idx);
@@ -310,8 +327,8 @@
         Sound.chime(si);
         sparks(s.pts[s.pts.length - 1].x, s.pts[s.pts.length - 1].y, 5);
         ring.style.display = 'none';
-        // ヒーローは かくの はしで ぶきを だして かっこつける
-        if (actor.costume) {
+        // ヒーローは かくの はしで ぶきを だして かっこつける（さいごの かくは たたかいへ）
+        if (actor.costume && si < letter.length - 1) {
           try {
             await heroPose(actor, si === letter.length - 1);
           } catch (e) { return; }
@@ -326,7 +343,7 @@
         lastBlip = 0;
         ring.style.display = 'none';
         const n = cur();
-        const j = Math.min(n.pts.length - 1, AHEAD);
+        const j = Math.min(n.pts.length - 1, ahead());
         Sound.hop();
         actor.mode(null);
         try {
@@ -335,8 +352,37 @@
         actor.mode('wiggle');
         ring.style.display = '';
         placeRing();
+        tx = actor.x;
+        ty = actor.y;
         lastProgress = performance.now();
         busy = false;
+      }
+
+      // かいている とちゅうで「へんしん！」
+      const btn = $('#btn-henshin');
+      async function onHenshin(e) {
+        e.preventDefault();
+        if (busy || actor.costume) return;
+        busy = true;
+        active = false;
+        btn.hidden = true;
+        const x0 = actor.x, y0 = actor.y, s0 = actor.size;
+        const S = 28;
+        const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+        try {
+          await moveTo(actor, clamp(x0, S / 2, VB - S / 2), clamp(y0, S / 2 + 4, VB - S / 2), 250, { size: S });
+          await transform(actor);
+          await moveTo(actor, x0, y0, 300, { size: s0 });
+        } catch (err) { return; }
+        setMessage('ゆびで おいかけて なぞってね！');
+        actor.mode('wiggle');
+        lastProgress = performance.now();
+        busy = false;
+      }
+      if (!actor.costume) {
+        btn.hidden = false;
+        btn.addEventListener('pointerdown', onHenshin);
+        setMessage('なぞってね！');
       }
 
       function handlePoint(e) {
@@ -392,6 +438,9 @@
 
       function finish() {
         clearInterval(hintTimer);
+        cancelAnimationFrame(raf);
+        btn.hidden = true;
+        btn.removeEventListener('pointerdown', onHenshin);
         board.removeEventListener('pointerdown', onDown);
         board.removeEventListener('pointermove', onMove);
         board.removeEventListener('pointerup', onUp);
@@ -411,16 +460,7 @@
   }
 
   // ---------- ヒーロー ----------
-  async function henshin(actor) {
-    actor.mode('idle');
-    setMessage('ボタンで へんしんだ！');
-    const btn = $('#btn-henshin');
-    btn.hidden = false;
-    try {
-      await waitTap(btn);
-    } finally {
-      btn.hidden = true;
-    }
+  async function transform(actor) {
     const k = Hero.costume(actor.info.word);
     Sound.henshin();
     Sound.say('ヒーロー へんしん！', { pitch: 1.3, rate: 1.1 });
@@ -437,12 +477,10 @@
     Sound.clank();
     await sleep(450);
     if (k.gear === 'jet') Sound.jet(); else Sound.whoosh();
-    await heroPose(actor, true);
-    actor.say(`${k.name} さんじょう！`, 2400);
+    actor.say(`${k.name} さんじょう！`, 2200);
     setMessage(`${k.name} さんじょう！`);
     Sound.say(`${k.name}、さんじょう！`, { pitch: 1.2, rate: 1.05 });
-    actor.mode('idle');
-    await sleep(2000);
+    await sleep(1800);
   }
 
   async function heroPose(actor, big) {
@@ -460,6 +498,160 @@
     await sleep(big ? 1500 : 1050);
     actor.unpose();
     await moveTo(actor, x0, y0, 200, { size: s0 });
+  }
+
+  // ---------- わるもの と たたかう ----------
+  async function battle(actor) {
+    const e = Hero.enemy();
+    const foe = new Actor(null, { emoji: e.emoji, word: e.name });
+    foe.el.classList.add('foe');
+    const y = VB * 0.58;
+    foe.set(offscreenX(1), y, 30);
+    svg.classList.add('dim');
+    setMessage(`あっ！ わるものの ${e.name} だ！`);
+    Sound.say(`あっ！ わるものの ${e.name} だ！`, { pitch: 1.3 });
+    actor.mode('running');
+    foe.mode('running');
+    await Promise.all([
+      moveTo(actor, VB * 0.3, y, 700, { size: 30, arc: 10 }),
+      moveTo(foe, VB * 0.74, y, 900, { ease: easeInOut }),
+    ]);
+    actor.mode('idle');
+    foe.mode('idle');
+    actor.face(1);
+    foe.face(-1);
+    foe.say(e.cry, 1600);
+    Sound.say(e.cry, { pitch: 0.6, rate: 0.9 });
+    await sleep(1300);
+
+    // ぶつかりあいっこ
+    const half = 13;
+    const mid = VB / 2;
+    actor.mode('running');
+    foe.mode('running');
+    await Promise.all([
+      moveTo(actor, mid - half, y, 450, { ease: easeIn }),
+      moveTo(foe, mid + half, y, 450, { ease: easeIn }),
+    ]);
+    Sound.bonk();
+    actor.once('bonk');
+    foe.once('bonk');
+    sparks(mid, y - 6, 7, ['💥', '⭐', '✨']);
+    actor.mode('push');
+    foe.mode('push');
+    await pushContest(actor, foe, y);
+
+    // ひっさつわざ
+    actor.mode(null);
+    foe.mode(null);
+    if (!actor.costume) await transform(actor);
+    await finisher(actor, foe, e);
+    svg.classList.remove('dim');
+  }
+
+  // れんだで おしかえす
+  function pushContest(actor, foe, y) {
+    return new Promise((resolve, reject) => {
+      const gauge = $('#power');
+      const fill = gauge.querySelector('.power-fill');
+      gauge.hidden = false;
+      setMessage('タップ タップ！');
+      let power = 15, taps = 0, lastTap = performance.now(), raf = 0, last = performance.now();
+      const shouts = ['えいっ！', 'がんばれー！', 'まけないぞ！', 'もうすこし！'];
+
+      function onTap(ev) {
+        ev.preventDefault();
+        power = Math.min(100, power + 9 * actor.speed);
+        taps++;
+        lastTap = performance.now();
+        Sound.push(power / 100);
+        sparks(actor.x + 13, y - 4 + Math.random() * 8, 2, ['💥', '✨']);
+        if (taps % 5 === 0) actor.say(shouts[(taps / 5 - 1) % shouts.length], 900);
+        if (taps === 7) foe.say('ぐぬぬ…', 1000);
+        if (power >= 100) done();
+      }
+      function frame(now) {
+        const dt = Math.min(50, now - last) / 1000;
+        last = now;
+        power = Math.max(0, power - 7 * dt);  // わるものも すこし おしかえしてくる
+        const c = VB / 2 + (power - 40) / 100 * 22;
+        const j = () => (Math.random() - 0.5) * 0.8;
+        actor.x = c - 13 + j(); actor.y = y + j(); actor.apply();
+        foe.x = c + 13 + j(); foe.y = y + j(); foe.apply();
+        fill.style.width = power + '%';
+        if (now - lastTap > 3500) {
+          actor.say('タップして！', 1200);
+          lastTap = now;
+        }
+        raf = requestAnimationFrame(frame);
+      }
+      function stop() {
+        cancelAnimationFrame(raf);
+        board.removeEventListener('pointerdown', onTap);
+        gauge.hidden = true;
+      }
+      function done() {
+        stop();
+        resolve();
+      }
+      board.addEventListener('pointerdown', onTap);
+      raf = requestAnimationFrame(frame);
+      cleanups.push(() => { stop(); reject(CANCEL); });
+    });
+  }
+
+  async function finisher(actor, foe, e) {
+    const f = Hero.finisher(actor.costume);
+    actor.face(1);
+    // ためて…
+    actor.el.classList.add('charge');
+    Sound.charge();
+    actor.say(f.name, 2600);
+    setMessage(f.name);
+    Sound.say(f.name, { pitch: 1.2, rate: 1.0 });
+    sparks(actor.x, actor.y, 8, ['⚡', '✨']);
+    await sleep(1300);
+    actor.el.classList.remove('charge');
+    actor.pose(f.pose);
+    Sound[f.pose.sfx]();
+    const fx = $('#fx');
+    if (f.kind === 'sword') {
+      await moveTo(actor, Math.min(foe.x + 20, VB - actor.size / 2), actor.y, 200, { ease: easeIn });
+      const sl = document.createElement('div');
+      sl.className = 'big-slash';
+      sl.style.left = (foe.x / VB * 100) + '%';
+      sl.style.top = (foe.y / VB * 100) + '%';
+      fx.appendChild(sl);
+      setTimeout(() => sl.remove(), 900);
+    } else {
+      const bm = document.createElement('div');
+      bm.className = 'big-beam';
+      const x0 = actor.x + actor.size * 0.35;
+      bm.style.left = (x0 / VB * 100) + '%';
+      bm.style.top = ((actor.y - actor.size * 0.12) / VB * 100) + '%';
+      bm.style.width = ((foe.x - x0 + 6) / VB * 100) + '%';
+      bm.style.setProperty('--beam', actor.costume.color.main);
+      fx.appendChild(bm);
+      setTimeout(() => bm.remove(), 1100);
+      await sleep(350);
+    }
+    // やっつけた！
+    board.classList.remove('flash');
+    void board.offsetWidth;
+    board.classList.add('flash');
+    Sound.boom();
+    foe.el.classList.add('defeated');
+    sparks(foe.x, foe.y, 14, ['💥', '⭐', '✨', '🌟']);
+    foe.say('やられた〜！', 1400);
+    Sound.say('やられたー', { pitch: 0.7 });
+    await sleep(500);
+    actor.unpose();
+    await moveTo(foe, offscreenX(1), -30, 700, { arc: 10, ease: easeIn });
+    foe.remove();
+    actor.mode('happy');
+    actor.say('せいぎの しょうり！', 1600);
+    Sound.say('せいぎの しょうり！', { pitch: 1.3 });
+    await sleep(1400);
   }
 
   // ---------- メダル ゲット ----------
@@ -496,7 +688,6 @@
   // ---------- ひらがな ひとつぶん ----------
   async function playLetter(c, color, actor) {
     const info = WORDS[c];
-    if (save.hero && !actor.costume) await henshin(actor);
     actor.mode('idle');
     setMessage(`${info.emoji} を タップしてね！`);
     await waitTap();
@@ -522,7 +713,7 @@
       await moveTo(actor, s.pts[0].x, s.pts[0].y, 500, { size: DEMO_SIZE, arc: 14 });
       // はしった あとに せんが のこる（おわったら てんせんに もどす）
       s.demo.style.opacity = 1;
-      const dur = Math.max(450, s.len * 12) / actor.speed;
+      const dur = Math.max(700, s.len * 20) / actor.speed;
       await tween(dur, t => {
         const k = Math.min(s.pts.length - 1, Math.round(t * (s.pts.length - 1)));
         const p = s.pts[k];
@@ -544,10 +735,13 @@
 
     await trace(letter, actor);
 
-    // つかまえた！
+    // さいごに わるものが でてくる
+    await battle(actor);
+
+    // やっつけた！
     Sound.caught();
     actor.mode('happy');
-    setMessage('つかまえた！ じょうず！');
+    setMessage('やっつけた！ じょうず！');
     sparks(VB / 2, VB / 2, 12);
     await moveTo(actor, VB * 0.78, VB * 0.78, 500, { size: 24, arc: 10, ease: easeOutBack });
     actor.say(`${c}！`, 1500);
@@ -670,6 +864,8 @@
     $('#fx').innerHTML = '';
     $('#medal-pop').classList.remove('show');
     $('#btn-henshin').hidden = true;
+    $('#power').hidden = true;
+    svg.classList.remove('dim');
     const label = $('#stage-label');
     label.textContent = `${stage.name} の だん`;
     label.style.background = stage.color;
@@ -777,8 +973,6 @@
 
   function renderTitle() {
     document.querySelectorAll('.mode').forEach(b => b.classList.toggle('on', b.dataset.mode === save.mode));
-    $('#btn-hero-mode').classList.toggle('on', !!save.hero);
-    $('#btn-hero-mode').setAttribute('aria-pressed', String(!!save.hero));
     const map = $('#stage-map');
     map.innerHTML = '';
     const nx = nextStageIdx();
@@ -867,16 +1061,6 @@
   $('#btn-zukan').onclick = () => { renderZukan(); showOverlay('#overlay-zukan', true); };
   $('#btn-zukan-close').onclick = () => showOverlay('#overlay-zukan', false);
   $('#btn-detail-close').onclick = () => $('#medal-detail').classList.remove('show');
-  $('#btn-hero-mode').onclick = () => {
-    Sound.unlock();
-    save.hero = !save.hero;
-    writeSave();
-    renderTitle();
-    if (save.hero) {
-      Sound.henshin();
-      Sound.say('ヒーローモード！', { pitch: 1.3 });
-    }
-  };
   $('#btn-reset').onclick = () => {
     if (confirm('すすんだ ステージと メダルを ぜんぶ けして さいしょから に しますか？')) {
       save = defaultSave();

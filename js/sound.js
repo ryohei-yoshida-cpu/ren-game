@@ -175,6 +175,20 @@ window.Sound = (() => {
       [600, 800, 1000, 1200, 1400].forEach((f, i) => tone(f, i * 0.06, 0.08, { type: 'sine', vol: 0.08 }));
       [72, 79, 84].forEach(m => tone(midi(m), 0.4, 0.4, { type: 'triangle', vol: 0.1 }));
     },
+    // ---- たたかい ----
+    push(t) {
+      tone(260 + t * 500, 0, 0.08, { type: 'square', vol: 0.07 });
+      noise(0, 0.05, { vol: 0.2, freq: 1800 });
+    },
+    charge() {
+      tone(150, 0, 1.0, { type: 'sawtooth', vol: 0.06, slide: 6 });
+      tone(300, 0.1, 0.9, { type: 'sine', vol: 0.08, slide: 4 });
+    },
+    boom() {
+      noise(0, 0.7, { vol: 0.6, freq: 300 });
+      tone(140, 0, 0.6, { type: 'square', vol: 0.12, slide: 0.25 });
+      [84, 88, 91].forEach((m, i) => tone(midi(m), 0.35 + i * 0.08, 0.3, { type: 'triangle', vol: 0.1 }));
+    },
     // ---- メダル ----
     medal() {
       tone(988, 0, 0.1, { type: 'square', vol: 0.07 });

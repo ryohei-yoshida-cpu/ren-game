@@ -131,5 +131,29 @@ window.Hero = (() => {
   }
   const BEAM_COLORS = ['#00e5ff', '#ff3d7f', '#7cff4d', '#ffd60a', '#b26bff'];
 
-  return { costume, helmetSVG, gearSVG, weaponSVG, pickPose, beamColor: () => pick(BEAM_COLORS) };
+  // もじの さいごに でてくる わるもの
+  const ENEMIES = [
+    { emoji: '👾', name: 'ギザギザン', cry: 'ギザギザー！' },
+    { emoji: '🦖', name: 'ガオザウルス', cry: 'がおー！' },
+    { emoji: '🤖', name: 'ガラクタロボ', cry: 'ガガガー！' },
+    { emoji: '👹', name: 'オニオニ', cry: 'おにおにー！' },
+    { emoji: '🐲', name: 'ドラドラ', cry: 'ドラー！' },
+    { emoji: '🦇', name: 'コウモリン', cry: 'キーキー！' },
+    { emoji: '🦂', name: 'サソリン', cry: 'チクチクー！' },
+  ];
+  let lastEnemy = null;
+  function enemy() {
+    const e = pick(ENEMIES.filter(x => x !== lastEnemy));
+    lastEnemy = e;
+    return e;
+  }
+
+  // ひっさつわざ（けん か じゅう）
+  function finisher(k) {
+    return Math.random() < 0.5
+      ? { kind: 'sword', name: `ひっさつ！ ${k.color.name} スラッシュ！`, pose: POSES.find(p => p.id === 'slash') }
+      : { kind: 'beam', name: `ひっさつ！ ${k.color.name} ビーム！`, pose: POSES.find(p => p.id === 'gun') };
+  }
+
+  return { costume, helmetSVG, gearSVG, weaponSVG, pickPose, enemy, finisher, beamColor: () => pick(BEAM_COLORS) };
 })();

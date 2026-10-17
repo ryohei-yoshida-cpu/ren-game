@@ -50,10 +50,6 @@
         <button class="mode" data-mode="random">🎲 ランダム</button>
       </div>
 
-      <button id="btn-hero-mode" class="hero-toggle" aria-pressed="false">
-        <span class="hero-toggle-label">🦸 ヒーローモード</span><span class="hero-toggle-sw"></span>
-      </button>
-
       <div id="stage-map" class="stage-map"></div>
 
       <button id="btn-install" class="btn btn-soft" hidden>📲 ホームがめんに ついか</button>
@@ -88,11 +84,17 @@
           </svg>
           <div id="actors"></div>
           <div id="fx"></div>
+          <div id="power" hidden>
+            <div class="power-bar"><div class="power-fill"></div></div>
+            <div class="power-label">れんだで おしかえせ！</div>
+          </div>
           <div id="medal-pop"><div class="mp-medal"></div><div class="mp-label"></div></div>
         </div>
-        <button id="btn-henshin" class="btn btn-hero" hidden>⚡ ヒーロー へんしん！ ⚡</button>
       </div>
-      <div id="message" class="message"></div>
+      <div class="play-bottom">
+        <div id="message" class="message"></div>
+        <button id="btn-henshin" class="btn btn-hero" hidden>⚡ へんしん！</button>
+      </div>
     </section>
 
     <!-- ステージ クリア ＆ きょうは ここまで？ -->
