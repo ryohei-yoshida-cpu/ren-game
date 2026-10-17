@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ひらがな">
+  <meta name="theme-color" content="#fff4dc">
+  <title>ひらがな おいかけっこ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- タイトル -->
+    <section id="screen-title" class="screen active">
+      <h1 class="logo">
+        <span class="logo-sub">にげる ひらがなを つかまえろ！</span>
+        <span class="logo-main">ひらがな<br>おいかけっこ</span>
+      </h1>
+      <div class="logo-parade" aria-hidden="true">🐜 🐶 🐰 🦐 👻</div>
+
+      <button id="btn-play" class="btn btn-go btn-big">あそぶ！</button>
+
+      <div class="mode-switch" role="radiogroup" aria-label="モード">
+        <button class="mode" data-mode="order">🔢 じゅんばん</button>
+        <button class="mode" data-mode="random">🎲 ランダム</button>
+      </div>
+
+      <div id="stage-map" class="stage-map"></div>
+
+      <div class="title-foot">
+        <button id="btn-zukan" class="btn btn-soft">📖 ずかん <span id="zukan-count"></span></button>
+        <button id="btn-reset" class="btn-tiny">さいしょから（おとなよう）</button>
+      </div>
+      <p class="credit">ひらがなの かきじゅん: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> (CC BY-SA 3.0)</p>
+    </section>
+
+    <!-- あそぶ -->
+    <section id="screen-play" class="screen">
+      <header class="topbar">
+        <button id="btn-home" class="btn-icon" aria-label="おうち">🏠</button>
+        <div id="stage-label" class="stage-label"></div>
+        <div id="progress" class="progress"></div>
+      </header>
+      <div id="board-wrap">
+        <div id="board">
+          <svg id="svg" viewBox="0 0 109 109" aria-hidden="true">
+            <g id="g-bg">
+              <rect x="2" y="2" width="105" height="105" rx="10" class="paper"/>
+              <line x1="54.5" y1="6" x2="54.5" y2="103" class="cross"/>
+              <line x1="6" y1="54.5" x2="103" y2="54.5" class="cross"/>
+            </g>
+            <g id="g-guide"></g>
+            <g id="g-demo"></g>
+            <g id="g-ink"></g>
+            <g id="g-num"></g>
+            <g id="g-hint"></g>
+          </svg>
+          <div id="actors"></div>
+          <div id="fx"></div>
+        </div>
+      </div>
+      <div id="message" class="message"></div>
+    </section>
+
+    <!-- ステージ クリア ＆ きょうは ここまで？ -->
+    <div id="overlay-clear" class="overlay">
+      <div class="confetti"></div>
+      <div class="panel">
+        <div class="clear-title"></div>
+        <div class="parade"></div>
+        <div class="ask">
+          <p class="ask-q">きょうは ここまで？</p>
+          <div class="next-peek"></div>
+          <div class="ask-btns">
+            <button id="btn-more" class="btn btn-go btn-big">まだ やる！</button>
+            <button id="btn-stop" class="btn btn-soft">きょうは おしまい</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- またね -->
+    <div id="overlay-bye" class="overlay">
+      <div class="panel">
+        <div class="bye-title">またね！</div>
+        <div class="bye-wave" aria-hidden="true">👋</div>
+        <p class="bye-text"></p>
+        <div class="parade bye-parade"></div>
+        <button id="btn-bye" class="btn btn-soft">おわる</button>
+      </div>
+    </div>
+
+    <!-- ずかん -->
+    <div id="overlay-zukan" class="overlay">
+      <div class="panel panel-wide">
+        <div class="zukan-title">📖 ひらがな ずかん</div>
+        <div id="zukan-grid" class="zukan-grid"></div>
+        <button id="btn-zukan-close" class="btn btn-soft">とじる</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="js/strokes.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
