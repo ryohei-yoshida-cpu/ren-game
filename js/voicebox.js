@@ -252,20 +252,18 @@ window.VoiceBox = (() => {
     return { file: new File([pdf], `こえパック_${safe}_${n}こ.pdf`, { type: 'application/pdf' }), count: n };
   }
 
-  async function importPack(file) {
+  // こえパックを よむ（まだ いれない）→ { by, clips: [{ key, blob }] }
+  async function readPack(file) {
     const text = new TextDecoder().decode(await file.arrayBuffer());
     let json = text.trim();
     const a = text.indexOf(BEGIN);
     if (a >= 0) json = text.slice(a + BEGIN.length, text.indexOf(END, a));   // PDF の こえパック
     const j = JSON.parse(json);                                              // まえの .txt も よめる
     if (j.format !== PACK || !j.clips) throw new Error('format');
-    let n = 0;
-    for (const [k, b64] of Object.entries(j.clips)) {
-      const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-      await put(k, new Blob([bin], { type: 'audio/wav' }), j.by || '');
-      n++;
-    }
-    return { count: n, by: j.by || '' };
+    const clips = Object.entries(j.clips).map(([key, b64]) => ({
+      key, blob: new Blob([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], { type: 'audio/wav' }),
+    }));
+    return { by: j.by || '', clips };
   }
 
   return {
@@ -277,7 +275,7 @@ window.VoiceBox = (() => {
     meta: () => new Map(keys),
     loudnessGain,
     tombstones: tombs,
-    blob, put, remove, record, exportPack, importPack,
+    blob, put, remove, record, exportPack, readPack,
     onChange: f => listeners.push(f),
     get enabled() { return enabled; },
     set enabled(on) {

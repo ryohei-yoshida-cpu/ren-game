@@ -769,3 +769,23 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .schar.on { background: var(--go); color: #fff; }
 .schar.has::after { content: '🎙'; position: absolute; top: -4px; right: -4px; font-size: 13px; }
 .sgroup small { display: block; font-weight: 700; opacity: .7; }
+
+/* こえパックを どこに いれるか */
+.import-dialog { z-index: 3; }
+.import-dialog .panel { max-height: 100%; text-align: left; align-items: stretch; gap: 10px; }
+.imp-lead { margin: 0; font-size: 14px; font-weight: 700; opacity: .75; }
+.imp-body { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+.imp-group { background: #fbf6ec; border-radius: 16px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.imp-head { font-size: 17px; font-weight: 900; }
+.imp-head small { font-size: 12px; opacity: .6; }
+.imp-to { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.imp-to select { font: inherit; font-size: 16px; font-weight: 900; padding: 6px 8px; border-radius: 10px; border: 2px solid #ffd56b; background: #fff; max-width: 100%; }
+.imp-row { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
+.imp-row input { width: 22px; height: 22px; flex-shrink: 0; }
+.imp-row span { flex: 1; }
+.imp-row.off { opacity: .45; }
+.imp-row small { display: block; font-size: 11px; }
+.imp-over { color: #c2410c; }
+.imp-skip { color: #7d8a99; }
+.imp-play { flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; border: none; background: #fff; box-shadow: 0 2px 0 rgba(74, 52, 38, .15); }
+#imp-ok:disabled { opacity: .4; }

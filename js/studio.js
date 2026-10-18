@@ -249,14 +249,100 @@
     await shareFile(file);
   };
 
+  // ---- こえパックを よみこむ: なにを どこに いれるか えらぶ ----
+  const dlg = $('#import-dialog');
+  let pack = null;   // { by, groups: [{ from, target, items: [{ key, text, blob, song, on }] }] }
+  const groupLabel = from => (from.startsWith('c:') ? charLabel(from.slice(2))
+    : from === 'kid' ? charLabel('kid') : (ROLES.find(r => r.who === from) || { name: from }).name);
+  const isSong = t => /^(.)、\1、/.test(t);
+  // いれる さきの セリフの キー（うたは その キャラ だけ）
+  function targetKey(g, it) {
+    if (g.target === g.from) return it.key;
+    if (it.song) return null;
+    return `${g.target}|${it.text}`;   // target は 'kid' か 'c:い' など
+  }
+
+  function renderImport() {
+    let total = 0;
+    dlg.querySelector('.imp-body').innerHTML = pack.groups.map((g, gi) => {
+      const canMove = g.from === 'kid' || g.from.startsWith('c:');
+      const sel = canMove
+        ? `<label class="imp-to">いれる さき <select data-g="${gi}">` +
+          [`<option value="${g.from}">そのまま（${groupLabel(g.from)}）</option>`,
+            ...['kid', ...CHARS].filter(c => (c === 'kid' ? 'kid' : 'c:' + c) !== g.from).map(c =>
+              `<option value="${c === 'kid' ? 'kid' : 'c:' + c}"${g.target === (c === 'kid' ? 'kid' : 'c:' + c) ? ' selected' : ''}>${charLabel(c)}</option>`)].join('') +
+          '</select></label>'
+        : '';
+      const rows = g.items.map((it, ii) => {
+        const to = targetKey(g, it);
+        if (to && it.on) total++;
+        const note = !to ? '<small class="imp-skip">うたは この キャラ だけ</small>'
+          : VoiceBox.recorded(to) ? '<small class="imp-over">うわがき</small>' : '';
+        return `<div class="imp-row${to ? '' : ' off'}"><input type="checkbox" data-g="${gi}" data-i="${ii}"${it.on && to ? ' checked' : ''}${to ? '' : ' disabled'}>` +
+          `<span>${it.text.replace(/</g, '&lt;')}${note}</span><button class="imp-play" data-g="${gi}" data-i="${ii}" aria-label="きく">▶</button></div>`;
+      }).join('');
+      return `<div class="imp-group"><div class="imp-head">${groupLabel(g.from)} <small>${g.items.length}こ</small></div>${sel}${rows}</div>`;
+    }).join('');
+    dlg.querySelector('.imp-title').textContent = `📥 ${pack.by || 'ともだち'} の こえパック`;
+    $('#imp-ok').textContent = `${total}こ いれる`;
+    $('#imp-ok').disabled = !total;
+  }
+
+  dlg.addEventListener('change', e => {
+    const g = pack && pack.groups[e.target.dataset.g];
+    if (!g) return;
+    if (e.target.tagName === 'SELECT') g.target = e.target.value;
+    else g.items[e.target.dataset.i].on = e.target.checked;
+    renderImport();
+  });
+  // とどいた こえを ためしに きく
+  let previewCtx = null;
+  dlg.addEventListener('click', async e => {
+    if (!e.target.classList.contains('imp-play')) return;
+    const it = pack.groups[e.target.dataset.g].items[e.target.dataset.i];
+    previewCtx = previewCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const buf = await previewCtx.decodeAudioData(await it.blob.arrayBuffer());
+    const src = previewCtx.createBufferSource();
+    const gain = previewCtx.createGain();
+    gain.gain.value = VoiceBox.loudnessGain(buf.getChannelData(0), 0, buf.length, buf.sampleRate);
+    src.buffer = buf;
+    src.connect(gain).connect(previewCtx.destination);
+    src.start();
+  });
+  $('#imp-cancel').onclick = () => { dlg.classList.remove('show'); pack = null; };
+  $('#imp-ok').onclick = async () => {
+    let n = 0;
+    for (const g of pack.groups) {
+      for (const it of g.items) {
+        const to = targetKey(g, it);
+        if (!to || !it.on) continue;
+        await VoiceBox.put(to, it.blob, pack.by || 'ともだち');
+        n++;
+      }
+    }
+    dlg.classList.remove('show');
+    say(`${pack.by || 'ともだち'} の こえを ${n}こ いれたよ！`);
+    pack = null;
+    render();
+  };
+
   $('#studio-file').onchange = async e => {
     const f = e.target.files[0];
     e.target.value = '';
     if (!f) return;
     try {
-      const r = await VoiceBox.importPack(f);
-      say(`${r.by || 'ともだち'} の こえを ${r.count}こ いれたよ！`);
-      render();
+      await loadLines();
+      const r = await VoiceBox.readPack(f);
+      const groups = new Map();
+      for (const c of r.clips) {
+        const i = c.key.indexOf('|');
+        const from = c.key.slice(0, i), text = c.key.slice(i + 1);
+        if (!groups.has(from)) groups.set(from, { from, target: from, items: [] });
+        groups.get(from).items.push({ key: c.key, text, blob: c.blob, song: isSong(text), on: true });
+      }
+      pack = { by: r.by, groups: [...groups.values()] };
+      renderImport();
+      dlg.classList.add('show');
     } catch (err) {
       say('こえパックが よみこめなかったよ');
     }
