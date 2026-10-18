@@ -174,10 +174,12 @@
   });
 
   // ---- LINE で たのむ / おくる / よみこむ ----
-  async function shareFile(file, text) {
+  // LINE は メッセージと ファイルを いっしょに わたすと メッセージだけ おくって しまうので、ファイルだけ わたす
+  async function shareFile(file) {
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({ files: [file], title: 'ひらがなまてまて こえパック', text });
+        await navigator.share({ files: [file] });
+        say('おくれたよ！ あいてには「📥 こえを よみこむ」で この ファイルを えらんで もらってね');
         return true;
       } catch (e) {
         if (e.name === 'AbortError') return false;
@@ -189,7 +191,7 @@
     document.body.appendChild(a);
     a.click();
     a.remove();
-    say('ファイルを ほぞん したよ。LINEの トークで「ファイル」から おくってね');
+    say('ファイルを ほぞん したよ。LINEの トークで「＋」→「ファイル」から この ファイルを おくってね');
     return true;
   }
 
@@ -215,7 +217,8 @@
       return say('さいしょに なまえを いれてね（だれの こえか わかるように）');
     }
     const { file, count } = await VoiceBox.exportPack(keys, myName());
-    await shareFile(file, `${myName()} の こえパック（${count}こ）です！ 「ひらがなまてまて」の 🎙こえ →「こえを よみこむ」で いれてね`);
+    say(`こえパック（${count}こ）を つくったよ。LINEを えらんで おくってね`);
+    await shareFile(file);
   };
 
   $('#studio-file').onchange = async e => {

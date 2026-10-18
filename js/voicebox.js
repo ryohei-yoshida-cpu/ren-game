@@ -148,6 +148,63 @@ window.VoiceBox = (() => {
     r.onload = () => res(String(r.result).split(',')[1]);
     r.readAsDataURL(b);
   });
+  // こえパックは PDF に する（LINE で ファイルとして ちゃんと おくれる ように）。
+  // ひらくと せつめいの ページが みえて、こえの データは PDF の なかに かくして いれる
+  const BEGIN = '%HMVPACK-BEGIN\n', END = '\n%HMVPACK-END';
+
+  function coverJpeg(by, lines) {
+    const c = document.createElement('canvas');
+    c.width = 600; c.height = 800;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff4dc'; g.fillRect(0, 0, 600, 800);
+    g.fillStyle = '#ff6b6b'; g.font = '900 44px sans-serif'; g.textAlign = 'center';
+    g.fillText('🎙 こえパック', 300, 100);
+    g.fillStyle = '#4a3426'; g.font = '700 28px sans-serif';
+    g.fillText('わるいワニをやっつけろ', 300, 160);
+    g.fillText('「ひらがなまてまて」', 300, 200);
+    g.font = '900 34px sans-serif';
+    g.fillText(`${by || 'ともだち'} の こえ ${lines.length}こ`, 300, 280);
+    g.font = '700 22px sans-serif'; g.textAlign = 'left';
+    lines.slice(0, 12).forEach((t, i) => g.fillText('・' + t.slice(t.indexOf('|') + 1).slice(0, 22), 50, 340 + i * 30));
+    if (lines.length > 12) g.fillText(`… ほか ${lines.length - 12}こ`, 50, 340 + 12 * 30);
+    g.fillStyle = '#c2410c'; g.font = '700 22px sans-serif'; g.textAlign = 'center';
+    g.fillText('ゲームの「🎙 こえ」→「📥 こえを よみこむ」で', 300, 740);
+    g.fillText('この ファイルを えらんでね', 300, 772);
+    const bin = atob(c.toDataURL('image/jpeg', 0.85).split(',')[1]);
+    return { w: 600, h: 800, bytes: Uint8Array.from(bin, ch => ch.charCodeAt(0)) };
+  }
+
+  function buildPdf(img, data) {
+    const enc = new TextEncoder();
+    const parts = [];
+    const offsets = [];
+    let size = 0;
+    const push = x => { const b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); size += b.length; };
+    const obj = (n, head, stream) => {
+      offsets[n] = size;
+      if (stream) {
+        push(`${n} 0 obj\n<< ${head} /Length ${stream.length} >>\nstream\n`);
+        push(stream);
+        push('\nendstream\nendobj\n');
+      } else {
+        push(`${n} 0 obj\n${head}\nendobj\n`);
+      }
+    };
+    const W = 595, H = Math.round(595 * img.h / img.w);
+    push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+    obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+    obj(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    obj(3, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im1 5 0 R >> >> /Contents 4 0 R >>`);
+    obj(4, '', enc.encode(`q ${W} 0 0 ${H} 0 0 cm /Im1 Do Q`));
+    obj(5, `/Type /XObject /Subtype /Image /Width ${img.w} /Height ${img.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode`, img.bytes);
+    obj(6, '', enc.encode(BEGIN + data + END));   // こえの データ（どこからも つかわれない オブジェクト）
+    const xref = size;
+    let x = 'xref\n0 7\n0000000000 65535 f \n';
+    for (let i = 1; i <= 6; i++) x += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
+    push(x + `trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+    return new Blob(parts, { type: 'application/pdf' });
+  }
+
   async function exportPack(list, by) {
     const clips = {};
     for (const k of list) {
@@ -156,11 +213,17 @@ window.VoiceBox = (() => {
     }
     const n = Object.keys(clips).length;
     const body = JSON.stringify({ format: PACK, v: 1, by, at: new Date().toISOString(), clips });
+    const pdf = buildPdf(coverJpeg(by, Object.keys(clips)), body);
     const safe = (by || 'なまえなし').replace(/[\\/:*?"<>|\s]/g, '');
-    return { file: new File([body], `こえパック_${safe}_${n}こ.txt`, { type: 'text/plain' }), count: n };
+    return { file: new File([pdf], `こえパック_${safe}_${n}こ.pdf`, { type: 'application/pdf' }), count: n };
   }
+
   async function importPack(file) {
-    const j = JSON.parse(await file.text());
+    const text = new TextDecoder().decode(await file.arrayBuffer());
+    let json = text.trim();
+    const a = text.indexOf(BEGIN);
+    if (a >= 0) json = text.slice(a + BEGIN.length, text.indexOf(END, a));   // PDF の こえパック
+    const j = JSON.parse(json);                                              // まえの .txt も よめる
     if (j.format !== PACK || !j.clips) throw new Error('format');
     let n = 0;
     for (const [k, b64] of Object.entries(j.clips)) {
