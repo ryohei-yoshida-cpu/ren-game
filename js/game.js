@@ -22,6 +22,7 @@
   }
   function writeSave() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* むし */ }
+    if (window.Cloud) Cloud.saveChanged();
   }
   let save = loadSave();
   let caughtToday = [];
@@ -1446,7 +1447,7 @@
     cancelAll();
     keepAwake(false);
     if (!fromBack && history.state && history.state.play) history.back();
-    ['#overlay-clear', '#overlay-bye', '#overlay-zukan', '#overlay-ending'].forEach(id => showOverlay(id, false));
+    ['#overlay-clear', '#overlay-bye', '#overlay-zukan', '#overlay-ending', '#overlay-cloud'].forEach(id => showOverlay(id, false));
     $('#actors').innerHTML = '';
     $('#btn-henshin').hidden = true;
     $('#medal-detail').classList.remove('show');
@@ -1535,6 +1536,7 @@
   $('#btn-reset').onclick = () => {
     if (confirm('すすんだ ステージと メダルを ぜんぶ けして さいしょから に しますか？')) {
       save = defaultSave();
+      save.resetAt = Date.now();   // ほかの スマホにも「さいしょから」を つたえる
       writeSave();
       renderTitle();
     }
@@ -1572,4 +1574,16 @@
   window.__game = { STAGES, get save() { return save; } };
 
   renderTitle();
+
+  // ☁️ ウェブの データと まぜる
+  if (window.Cloud) {
+    Cloud.attach({
+      get: () => save,
+      set: s => {
+        save = Object.assign(defaultSave(), s);
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* むし */ }
+        if ($('#screen-title').classList.contains('active')) renderTitle();
+      },
+    });
+  }
 })();

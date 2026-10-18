@@ -68,6 +68,7 @@
         <div class="title-foot-row">
           <button id="btn-story" class="btn btn-soft">📖 おはなし</button>
           <button id="btn-studio" class="btn btn-soft">🎙 こえ</button>
+          <button id="btn-cloud" class="btn btn-soft">☁️ きょうゆう</button>
           <button id="btn-zukan" class="btn btn-soft">🏅 メダル <span id="zukan-count"></span></button>
         </div>
         <button id="btn-reset" class="btn-tiny">さいしょから（おとなよう）</button>
@@ -158,6 +159,41 @@
       </div>
     </div>
 
+    <!-- ☁️ データ きょうゆう -->
+    <div id="overlay-cloud" class="overlay">
+      <div class="panel cloud">
+        <div class="studio-head">
+          <div class="studio-title">☁️ データ きょうゆう</div>
+          <button id="cloud-close" class="btn-icon" aria-label="とじる">✕</button>
+        </div>
+        <p class="cloud-lead">ID を いれると、すすみぐあい・メダル・とった こえを ウェブに ほぞんします。<br>
+          ほかの スマホで おなじ ID を いれると、おなじ データで あそべます。</p>
+        <div id="cloud-setup" class="cloud-box" hidden>
+          まだ セットアップが できていません（おとなよう）。<br>README の「データを ほかの スマホと きょうゆう する」を みてね。
+        </div>
+        <div id="cloud-form" class="cloud-box" hidden>
+          <label class="cloud-label" for="cloud-id">ID（8もじ いじょう・えいすうじと -）</label>
+          <input id="cloud-id" class="cloud-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="wani-ab12-cd34">
+          <div class="cloud-btns">
+            <button id="cloud-connect" class="btn btn-go">つなぐ</button>
+            <button id="cloud-new" class="btn btn-soft">ID を つくる</button>
+          </div>
+          <p class="cloud-note">はじめての ときは「ID を つくる」→「つなぐ」。ほかの スマホでは その ID を いれて「つなぐ」。</p>
+        </div>
+        <div id="cloud-linked" class="cloud-box" hidden>
+          <div class="cloud-label">つながっている ID</div>
+          <div class="cloud-id-now"><span id="cloud-id-now"></span> <button id="cloud-copy" class="btn-tiny">コピー</button></div>
+          <div id="cloud-state" class="cloud-state"></div>
+          <div class="cloud-btns">
+            <button id="cloud-sync" class="btn btn-go">いま どうきする</button>
+            <button id="cloud-unlink" class="btn btn-soft">きょうゆうを やめる</button>
+          </div>
+        </div>
+        <p id="cloud-msg" class="studio-msg" aria-live="polite"></p>
+        <p class="cloud-note">⚠️ ID を しっている ひとは だれでも データを みたり かえたり できます。かぞく だけの ひみつに してね。</p>
+      </div>
+    </div>
+
     <!-- こえの スタジオ -->
     <div id="overlay-studio" class="overlay">
       <div class="panel panel-wide studio">
@@ -210,6 +246,8 @@
   <script src="js/sound.js"></script>
   <script src="js/hero.js"></script>
   <script src="js/medal.js"></script>
+  <script src="js/cloud-config.js"></script>
+  <script src="js/cloud.js"></script>
   <script src="js/game.js"></script>
   <script src="js/studio.js"></script>
 </body>

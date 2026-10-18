@@ -7,7 +7,8 @@ window.VoiceBox = (() => {
   const STORE = 'clips';
   const RATE = 16000;
   const PACK = 'hiragana-matemate-voices';
-  const keys = new Map();    // key → だれが とったか
+  const keys = new Map();    // key → { by: だれが とったか, at: いつ }
+  const TOMBS = 'voice-tombstones';   // けした こえ（ほかの スマホにも けしたことを つたえる）
   const listeners = [];
   let dbp = null;
 
@@ -32,8 +33,17 @@ window.VoiceBox = (() => {
   }
 
   const ready = tx('readonly', s => s.getAll())
-    .then(all => tx('readonly', s => s.getAllKeys()).then(ks => ks.forEach((k, i) => keys.set(k, all[i].by || ''))))
+    .then(all => tx('readonly', s => s.getAllKeys()).then(ks => ks.forEach((k, i) => keys.set(k, { by: all[i].by || '', at: all[i].at || 0 }))))
     .catch(() => { /* つかえない ブラウザ */ });
+
+  function tombs() {
+    try { return JSON.parse(localStorage.getItem(TOMBS)) || {}; } catch (e) { return {}; }
+  }
+  function setTomb(key, at) {
+    const t = tombs();
+    if (at) t[key] = at; else delete t[key];
+    try { localStorage.setItem(TOMBS, JSON.stringify(t)); } catch (e) { /* むし */ }
+  }
 
   function changed(key) {
     listeners.forEach(f => f(key));
@@ -42,14 +52,16 @@ window.VoiceBox = (() => {
   let enabled = true;
   try { enabled = localStorage.getItem('voicebox-off') !== '1'; } catch (e) { /* むし */ }
 
-  async function put(key, blob, by) {
-    await tx('readwrite', s => s.put({ blob, by, at: Date.now() }, key));
-    keys.set(key, by);
+  async function put(key, blob, by, at = Date.now()) {
+    await tx('readwrite', s => s.put({ blob, by, at }, key));
+    keys.set(key, { by, at });
+    setTomb(key, 0);
     changed(key);
   }
-  async function remove(key) {
+  async function remove(key, at = Date.now()) {
     await tx('readwrite', s => s.delete(key));
     keys.delete(key);
+    setTomb(key, at);
     changed(key);
   }
   async function blob(key) {
@@ -238,8 +250,10 @@ window.VoiceBox = (() => {
     ready,
     has: k => enabled && keys.has(k),
     recorded: k => keys.has(k),
-    by: k => keys.get(k),
+    by: k => (keys.get(k) || {}).by,
     keys: () => [...keys.keys()],
+    meta: () => new Map(keys),
+    tombstones: tombs,
     blob, put, remove, record, exportPack, importPack,
     onChange: f => listeners.push(f),
     get enabled() { return enabled; },

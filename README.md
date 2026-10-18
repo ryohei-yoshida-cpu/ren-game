@@ -132,6 +132,35 @@ python には `voicevox_core-0.16.x-...whl` を pip で いれておきます。
 - `open_jtalk_dic_utf_8-1.11/`（r9y9/open_jtalk）
 - `vvms/0.vvm`, `vvms/4.vvm`, `vvms/9.vvm`（VOICEVOX/voicevox_vvm）
 
+## ☁️ データを ほかの スマホと きょうゆう する
+
+タイトルの **「☁️ きょうゆう」** で ID を いれると、すすみぐあい・メダル・とった こえ が ウェブ（Firebase）に ほぞんされます。
+ほかの スマホで おなじ ID を いれると、おなじ データで あそべます。
+
+- はじめての スマホ: 「ID を つくる」→「つなぐ」（ID は メモして おく）
+- ほかの スマホ: その ID を いれて「つなぐ」
+- あそぶ・ろくおんする・アプリを ひらく たびに じどうで どうきします（オフラインの ときは つながったら）
+- すすみぐあいは **たしざん** で まざります（クリアした だん・メダルの かいすうは おおきい ほう）。どの スマホで あそんでも へりません
+- 「さいしょから」に すると、ほかの スマホも さいしょからに なります
+- ⚠️ ID を しっている ひとは だれでも データを みたり かえたり できます。かぞく だけの ひみつに してください
+
+### はじめに 1かいだけ: Firebase の セットアップ（おとなよう・むりょう）
+1. <https://console.firebase.google.com> を Google アカウントで ひらき、**「プロジェクトを作成」**（なまえは なんでも OK。Google アナリティクスは オフで OK）
+2. ひだりの メニュー **「構築」→「Firestore Database」→「データベースの作成」** → ロケーションは `asia-northeast1 (Tokyo)` → **「本番環境モード」** で つくる
+3. Firestore の **「ルール」** タブを ひらき、この リポジトリの [`firestore.rules`](firestore.rules) の なかみを まるごと はりつけて **「公開」**
+4. ⚙️ **「プロジェクトの設定」** → 「マイアプリ」の **`</>`（ウェブ）** → アプリの ニックネームを いれて 登録 → でてくる `firebaseConfig` の **`apiKey`** と **`projectId`** を コピー
+5. [`js/cloud-config.js`](js/cloud-config.js) に はりつける（または Claude に おくって いれて もらう）
+
+```js
+window.CLOUD_CONFIG = {
+  apiKey: 'AIza....',
+  projectId: 'hiragana-matemate-xxxx',
+};
+```
+
+`apiKey` は ウェブアプリに いれて つかう ための もので、ひみつの パスワードでは ありません（まもりは ルールで します）。
+むりょうの はんい（1にち 5まん かい よみこみ・2まん かい かきこみ、1GB）で じゅうぶん たります。
+
 ## ファイル
 
 | ファイル | ないよう |
@@ -141,6 +170,7 @@ python には `voicevox_core-0.16.x-...whl` を pip で いれておきます。
 | `js/data.js` | ひらがな ⇔ キャラ・ことば、ステージ（だん）の ていぎ |
 | `js/strokes.js` | かきじゅんデータ（KanjiVG より） |
 | `js/sound.js` | こうかおん・うた・こえ |
+| `js/cloud.js`, `js/cloud-config.js`, `firestore.rules` | ☁️ データ きょうゆう（Firebase） |
 | `js/voicebox.js`, `js/studio.js` | じぶんたちの こえの ろくおん・ほぞん・こえパック、こえの スタジオ |
 | `audio/voice/`, `tools/voices/` | VOICEVOX の こえと、それを つくる スクリプト |
 | `js/hero.js` | ヒーローの ヘルメット・マント・ジェット・ぶき・ポーズ・わるもの・ひっさつわざ |

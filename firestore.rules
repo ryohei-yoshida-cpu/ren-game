@@ -1,0 +1,15 @@
+rules_version = '2';
+// 「ひらがなまてまて」の データ きょうゆう よう
+//   accounts/{ID}           すすみぐあい
+//   accounts/{ID}/voices/*  とった こえ
+// ID を しっている ひとだけが よみかき できる（accounts の いちらん（list）は だれも みられない）
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /accounts/{id} {
+      allow get, create, update: if id.size() >= 8 && id.size() <= 64;
+      match /voices/{voice} {
+        allow get, list, create, update: if id.size() >= 8 && id.size() <= 64;
+      }
+    }
+  }
+}

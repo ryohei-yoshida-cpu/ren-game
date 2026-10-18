@@ -673,3 +673,16 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .studio-foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; flex-shrink: 0; }
 .studio-foot .btn { font-size: 15px; padding: 10px 16px; }
 .studio-import { cursor: pointer; }
+
+/* ---------- ☁️ データ きょうゆう ---------- */
+.cloud { text-align: left; align-items: stretch; gap: 10px; }
+.cloud-lead { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.6; }
+.cloud-box { background: #fbf6ec; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; font-weight: 700; }
+.cloud-box[hidden] { display: none; }
+.cloud-label { font-size: 13px; opacity: .7; }
+.cloud-input { font: inherit; font-size: 20px; font-weight: 900; padding: 10px 12px; border-radius: 12px; border: 2px solid #ead6b3; letter-spacing: 1px; }
+.cloud-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.cloud-btns .btn { font-size: 16px; padding: 10px 18px; }
+.cloud-id-now { font-size: 22px; font-weight: 900; letter-spacing: 1px; word-break: break-all; }
+.cloud-state { font-size: 14px; }
+.cloud-note { margin: 0; font-size: 12px; opacity: .7; line-height: 1.5; }

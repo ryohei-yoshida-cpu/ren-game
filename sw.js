@@ -2,7 +2,7 @@
 // インターネットに つながっている ときは かならず さいしんの ファイルを つかう（ネットワーク ゆうせん）。
 // ほぞんした ファイルは オフラインの ときだけ つかうので、ふるい ファイルと あたらしい ファイルが まざらない。
 // ほぞんする ファイルの しゅるいを かえたら VERSION を あげる
-const VERSION = 'v6';
+const VERSION = 'v7';
 const APP = 'app-' + VERSION;
 const FONTS = 'fonts-v1';
 const FILES = [
@@ -16,6 +16,8 @@ const FILES = [
   './js/sound.js',
   './js/hero.js',
   './js/medal.js',
+  './js/cloud-config.js',
+  './js/cloud.js',
   './js/game.js',
   './js/studio.js',
   './audio/voice/index.json',
