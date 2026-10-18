@@ -94,7 +94,11 @@ window.Sound = (() => {
       const src = id.startsWith('c:')
         ? VB.blob(id.slice(2)).then(b => b.arrayBuffer())
         : fetch(VOICE_DIR + id.slice(2)).then(r => r.arrayBuffer());
-      const p = src.then(decode);
+      // じぶんの こえは ならす ときにも おおきさを そろえる（まえに とった こえ・もらった こえも）
+      const p = src.then(decode).then(buf => {
+        if (id.startsWith('c:')) buf.level = VB.loudnessGain(buf.getChannelData(0), 0, buf.length, buf.sampleRate);
+        return buf;
+      });
       p.catch(() => clips.delete(id));
       clips.set(id, p);
       // つかいおわった ものは すこしずつ わすれる（メモリ たいさく）
@@ -114,7 +118,9 @@ window.Sound = (() => {
       if (!c) return res();
       const src = c.createBufferSource();
       src.buffer = buf;
-      src.connect(c.destination);
+      const g = c.createGain();
+      g.gain.value = buf.level || 1;
+      src.connect(g).connect(c.destination);
       let done = false;
       const end = () => { if (!done) { done = true; if (playing === src) playing = null; res(); } };
       src.onended = end;

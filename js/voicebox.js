@@ -85,6 +85,28 @@ window.VoiceBox = (() => {
     return new Blob([buf], { type: 'audio/wav' });
   }
 
+  // こえの きこえかたの おおきさを、VOICEVOX の こえ（しゃべって いる ところの へいきん -25dB くらい）に そろえる
+  const TARGET_RMS = Math.pow(10, -24 / 20);
+  const PEAK_LIMIT = Math.pow(10, -3 / 20);
+  function loudnessGain(d, from = 0, to = d.length, sr = 16000) {
+    const win = Math.max(1, Math.floor(sr * 0.01));
+    const frames = [];
+    let peak = 0;
+    for (let i = from; i + win <= to; i += win) {
+      let sum = 0;
+      for (let j = i; j < i + win; j++) {
+        sum += d[j] * d[j];
+        peak = Math.max(peak, Math.abs(d[j]));
+      }
+      frames.push(sum / win);
+    }
+    if (!frames.length || peak < 1e-4) return 1;
+    const th = Math.max(...frames) * 0.01;   // しゃべって いる ところだけ はかる
+    const act = frames.filter(f => f > th);
+    const rms = Math.sqrt(act.reduce((a, b) => a + b, 0) / act.length);
+    return Math.min(TARGET_RMS / rms, PEAK_LIMIT / peak, 8);
+  }
+
   // まえと うしろの しずかな ところを けずり、おとの おおきさを そろえる
   async function tidy(raw) {
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -118,7 +140,7 @@ window.VoiceBox = (() => {
     const src = off.createBufferSource();
     src.buffer = audio;
     const g = off.createGain();
-    g.gain.value = 0.9 / peak;
+    g.gain.value = loudnessGain(d, start, end, sr);
     src.connect(g).connect(off.destination);
     src.start(0, start / sr, (end - start) / sr);
     const out = await off.startRendering();
@@ -253,6 +275,7 @@ window.VoiceBox = (() => {
     by: k => (keys.get(k) || {}).by,
     keys: () => [...keys.keys()],
     meta: () => new Map(keys),
+    loudnessGain,
     tombstones: tombs,
     blob, put, remove, record, exportPack, importPack,
     onChange: f => listeners.push(f),
