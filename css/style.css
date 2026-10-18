@@ -686,3 +686,44 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .cloud-id-now { font-size: 22px; font-weight: 900; letter-spacing: 1px; word-break: break-all; }
 .cloud-state { font-size: 14px; }
 .cloud-note { margin: 0; font-size: 12px; opacity: .7; line-height: 1.5; }
+
+/* ---------- 🦸 へんしん（11しゅるい） ---------- */
+.actor.rainbow .helmet, .actor.rainbow .gear, .hero-fig.rainbow .helmet, .hero-fig.rainbow .gear { animation: rainbowGlow 2.4s linear infinite; }
+.actor.rainbow .body { filter: drop-shadow(0 0 .1em #ff6bd6) drop-shadow(0 0 .2em #6b7bff); }
+@keyframes rainbowGlow { to { filter: hue-rotate(360deg); } }
+.big-slash { --beam: #9be7ff; box-shadow: 0 0 12px var(--beam), 0 0 24px #fff; }
+.big-slash.sword::after { display: none; }
+.big-slash.saber, .big-slash.rainbow { background: linear-gradient(90deg, transparent, #fff 15%, var(--beam) 50%, #fff 85%, transparent); height: 4%; }
+.big-beam.rainbow { background: linear-gradient(180deg, #ff5e5e, #ffe14d 25%, #fff 45%, #fff 55%, #4dc3ff 75%, #d36bff); animation-name: bigBeam, rainbowGlow; animation-duration: 1s, 1s; }
+
+.hero-fig { position: relative; width: 92px; height: 92px; font-size: 64px; margin: 6px auto 0; }
+.hero-fig .rig { position: relative; width: 100%; height: 100%; display: grid; place-items: center; transform: scaleX(-1); }
+.hero-fig .emoji { position: relative; z-index: 1; line-height: 1; }
+.hero-fig .helmet { position: absolute; z-index: 2; left: 11%; top: -24%; width: 78%; overflow: visible; }
+.hero-fig .gear { position: absolute; z-index: 0; overflow: visible; }
+.hero-fig .cape { left: 34%; top: 14%; width: 84%; height: 84%; }
+.hero-fig .jet { left: 66%; top: 18%; width: 38%; height: 72%; transform: rotate(14deg); }
+.hero-fig .flame { transform-box: fill-box; transform-origin: 50% 0; animation: flame .12s ease-in-out infinite alternate; }
+.hero-fig-weapon { position: absolute; right: -14%; bottom: 10%; width: 28%; height: 70%; transform: rotate(18deg); }
+.hero-fig-weapon svg { width: 100%; height: 100%; overflow: visible; }
+.hero-fig-weapon .beam, .hero-fig-weapon .muzzle { display: none; }
+
+.new-form { display: none; flex-direction: column; align-items: center; gap: 4px; padding: 10px; border-radius: 18px;
+  background: radial-gradient(circle, #fff6c8, #fff 70%); }
+.new-form.show:not(:empty) { display: flex; animation: popin .5s cubic-bezier(.3, 1.6, .5, 1); }
+.nf-title { font-size: clamp(17px, 4.6vw, 22px); font-weight: 900; color: #c2410c; }
+.nf-name { font-size: 24px; font-weight: 900; color: var(--accent); margin-top: 18px; }
+.nf-move { font-size: 14px; font-weight: 700; opacity: .75; }
+
+.forms-lead { margin: 0; font-size: 14px; font-weight: 700; opacity: .75; }
+.forms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 10px; width: 100%; }
+.form-card {
+  border: none; border-radius: 18px; background: #fbf6ec; padding: 22px 6px 10px; display: flex; flex-direction: column;
+  align-items: center; gap: 2px; font-family: inherit; box-shadow: 0 4px 0 rgba(74, 52, 38, .1);
+}
+.form-card b { font-size: 14px; margin-top: 14px; }
+.form-card small { font-size: 10px; font-weight: 700; opacity: .7; line-height: 1.3; }
+.form-card.on { background: #fff4d6; box-shadow: 0 0 0 3px #ffd56b, 0 4px 0 rgba(74, 52, 38, .1); }
+.form-card.locked { background: #f0e8da; }
+.form-card.locked b { margin-top: 6px; opacity: .5; }
+.form-q { width: 92px; height: 92px; display: grid; place-items: center; font-size: 54px; font-weight: 900; color: #cbbd9f; }

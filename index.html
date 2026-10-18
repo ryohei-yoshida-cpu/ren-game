@@ -66,6 +66,7 @@
 
       <div class="title-foot">
         <div class="title-foot-row">
+          <button id="btn-forms" class="btn btn-soft">🦸 へんしん</button>
           <button id="btn-story" class="btn btn-soft">📖 おはなし</button>
           <button id="btn-studio" class="btn btn-soft">🎙 こえ</button>
           <button id="btn-cloud" class="btn btn-soft">☁️ きょうゆう</button>
@@ -122,6 +123,7 @@
       <div class="panel">
         <div class="clear-title"></div>
         <div class="parade"></div>
+        <div class="new-form"></div>
         <div class="ask">
           <p class="ask-q">きょうは ここまで？</p>
           <div class="next-peek"></div>
@@ -151,11 +153,22 @@
         <div class="ending-title">🎉 おひめさまを たすけた！</div>
         <div class="ending-couple" aria-hidden="true"><span class="ec-hero">🐜</span><span class="ec-heart">💕</span><span class="ec-princess">🐜<i>👑</i></span></div>
         <p class="ending-text">ひらがな ぜんぶ クリア！<br>なかまの みんな、ありがとう！</p>
+        <div class="new-form show"></div>
         <div class="parade ending-parade"></div>
         <div class="ask-btns">
           <button id="btn-ending-medal" class="btn btn-go">🏅 メダルを みる</button>
           <button id="btn-ending-home" class="btn btn-soft">おうちに もどる</button>
         </div>
+      </div>
+    </div>
+
+    <!-- 🦸 へんしん えらび -->
+    <div id="overlay-forms" class="overlay">
+      <div class="panel panel-wide">
+        <div class="zukan-title">🦸 へんしん <span id="forms-count"></span></div>
+        <p class="forms-lead">つかいたい へんしんを えらんでね。だんの ボスを たおすと あたらしい へんしんを おぼえるよ</p>
+        <div id="forms-grid" class="forms-grid"></div>
+        <button id="btn-forms-close" class="btn btn-soft">とじる</button>
       </div>
     </div>
 

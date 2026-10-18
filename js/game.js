@@ -140,17 +140,17 @@
     equip(k) {
       this.costume = k;
       this.el.classList.add('hero', 'gear-' + k.gear);
-      this.el.style.setProperty('--hero', k.color.main);
+      this.el.classList.toggle('rainbow', !!k.rainbow);
+      this.el.style.setProperty('--hero', k.color.glow || k.color.main);
       this.rig.insertAdjacentHTML('afterbegin', Hero.gearSVG(k));
       this.rig.insertAdjacentHTML('beforeend', Hero.helmetSVG(k));
     }
     // ぶきを だして ポーズ
     pose(p) {
-      const color = Hero.beamColor();
       p.weapons.forEach((w, i) => {
         const el = document.createElement('div');
         el.className = `weapon w${i}`;
-        el.innerHTML = Hero.weaponSVG(w, color);
+        el.innerHTML = Hero.weaponSVG(w, this.costume.beam);
         this.rig.appendChild(el);
       });
       this.el.classList.add('posing', 'pose-' + p.id);
@@ -490,8 +490,16 @@
   }
 
   // ---------- ヒーロー ----------
+  // おぼえた へんしんの かず（さいしょは 1つ。だんを クリアする たびに ふえる）
+  const formsUnlocked = () => Math.min(Hero.FORMS.length, 1 + save.cleared.length);
+  // つかう へんしん（えらんで いなければ いちばん あたらしい もの）
+  function currentForm() {
+    const n = formsUnlocked();
+    return Number.isInteger(save.form) && save.form < n ? save.form : n - 1;
+  }
+
   async function transform(actor) {
-    const k = Hero.costume(actor.info.word);
+    const k = Hero.costume(actor.info.word, currentForm());
     Sound.henshin();
     Sound.say('ヒーロー へんしん！', { who: 'kid' });
     setMessage('ヒーロー へんしん！');
@@ -514,7 +522,7 @@
   }
 
   async function heroPose(actor, big) {
-    const p = Hero.pickPose();
+    const p = Hero.pickPose(actor.costume);
     const x0 = actor.x, y0 = actor.y, s0 = actor.size;
     const S = Math.max(s0 * 1.6, 24);
     const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -816,25 +824,42 @@
     actor.pose(f.pose);
     Sound[f.pose.sfx]();
     const fx = $('#fx');
-    if (f.kind === 'sword') {
-      await moveTo(actor, Math.min(foe.x + 20, VB - actor.size / 2), actor.y, 200, { ease: easeIn });
+    const k = actor.costume;
+    const glow = k.beam === 'rainbow' ? '#ff6bd6' : k.beam;
+    const slash = () => {
       const sl = document.createElement('div');
-      sl.className = 'big-slash';
+      sl.className = `big-slash ${f.kind}`;
       sl.style.left = (foe.x / VB * 100) + '%';
       sl.style.top = (foe.y / VB * 100) + '%';
+      sl.style.setProperty('--beam', glow);
       fx.appendChild(sl);
       setTimeout(() => sl.remove(), 900);
-    } else {
+    };
+    const beam = () => {
       const bm = document.createElement('div');
-      bm.className = 'big-beam';
+      bm.className = 'big-beam' + (k.beam === 'rainbow' ? ' rainbow' : '');
       const x0 = actor.x + actor.size * 0.35;
       bm.style.left = (x0 / VB * 100) + '%';
       bm.style.top = ((actor.y - actor.size * 0.12) / VB * 100) + '%';
       bm.style.width = ((foe.x - x0 + 6) / VB * 100) + '%';
-      bm.style.setProperty('--beam', actor.costume.color.main);
+      bm.style.setProperty('--beam', glow);
       fx.appendChild(bm);
       setTimeout(() => bm.remove(), 1100);
+    };
+    if (f.kind === 'beam') {
+      beam();
       await sleep(350);
+    } else if (f.kind === 'rainbow') {
+      // ビームの あとに バツぎり
+      beam();
+      await sleep(450);
+      Sound.slash();
+      await moveTo(actor, Math.min(foe.x + 20, VB - actor.size / 2), actor.y, 200, { ease: easeIn });
+      slash();
+    } else {
+      // sword / double / saber
+      await moveTo(actor, Math.min(foe.x + 20, VB - actor.size / 2), actor.y, 200, { ease: easeIn });
+      slash();
     }
     // やっつけた！
     board.classList.remove('flash');
@@ -1039,10 +1064,13 @@
     await sleep(2200);
   }
 
-  function showEnding() {
+  function showEnding(learned = -1) {
     save.ending = (save.ending || 0) + 1;
+    if (learned >= 0) save.form = null;
     writeSave();
     const ov = $('#overlay-ending');
+    ov.querySelector('.new-form').innerHTML = learned >= 0 ? newFormHTML(learned) : '';
+    if (learned >= 0) setTimeout(() => announceForm(learned), 4500);
     ov.querySelector('.ending-parade').innerHTML = Object.values(WORDS).map(w => `<span>${w.emoji}</span>`).join('');
     confetti(ov.querySelector('.confetti'));
     showOverlay('#overlay-ending', true);
@@ -1317,9 +1345,11 @@
       }
       await sleep(300);
       if (ctx.finaleDue) {
+        const before = formsUnlocked();
         markStageCleared(stageIdx);
+        const learned = formsUnlocked() > before ? formsUnlocked() - 1 : -1;
         await finale(actor);
-        if (my === epoch) showEnding();
+        if (my === epoch) showEnding(learned);
         return;
       }
       if (my === epoch) stageClear(stageIdx, order);
@@ -1354,9 +1384,37 @@
     writeSave();
   }
 
+  // ひっさつわざ → もっている ぶき
+  const MOVE_WEAPON = { sword: 'sword', double: 'sword', saber: 'saber', rainbow: 'saber', beam: 'blaster' };
+  // へんしんの みため（ヘルメットと マント／ジェットを つけた キャラ）
+  function heroFigure(form, emoji = '🐜') {
+    const k = Hero.costume('', form);
+    return `<div class="hero-fig${k.rainbow ? ' rainbow' : ''}" style="--hero:${k.color.glow || k.color.main}">` +
+      `<div class="rig">${Hero.gearSVG(k)}<span class="emoji">${emoji}</span>${Hero.helmetSVG(k)}</div>` +
+      `<div class="hero-fig-weapon">${Hero.weaponSVG(MOVE_WEAPON[k.move.kind], k.beam)}</div></div>`;
+  }
+
+  // あたらしい へんしんを おぼえた ときの おしらせ
+  function newFormHTML(form) {
+    const k = Hero.FORMS[form];
+    return `<div class="nf-title">⚡ つよく なって あたらしい へんしんを おぼえた！</div>` +
+      heroFigure(form) + `<div class="nf-name">${k.title}</div><div class="nf-move">${k.move.name}</div>`;
+  }
+  function announceForm(form) {
+    Sound.henshin();
+    Sound.say('つよく なって あたらしい へんしんを おぼえた！', { who: 'narr' });
+    Sound.say(Hero.FORMS[form].title, { who: 'kid' });
+  }
+
   async function stageClear(stageIdx, order) {
     const stage = STAGES[stageIdx];
+    const before = formsUnlocked();
     markStageCleared(stageIdx);
+    const learned = formsUnlocked() > before ? formsUnlocked() - 1 : -1;
+    if (learned >= 0) {
+      save.form = null;   // あたらしい へんしんを つかう
+      writeSave();
+    }
     const next = stageIdx + 1;
 
     const ov = $('#overlay-clear');
@@ -1364,6 +1422,9 @@
     ov.querySelector('.parade').innerHTML = order.map(c => `<span>${WORDS[c].emoji}</span>`).join('');
     const ask = ov.querySelector('.ask');
     ask.classList.remove('show');
+    const nf = ov.querySelector('.new-form');
+    nf.innerHTML = learned >= 0 ? newFormHTML(learned) : '';
+    nf.classList.remove('show');
     confetti(ov.querySelector('.confetti'));
     showOverlay('#overlay-clear', true);
     Sound.fanfare();
@@ -1386,6 +1447,11 @@
 
     try {
       await sleep(2600);
+      if (learned >= 0) {
+        nf.classList.add('show');
+        announceForm(learned);
+        await sleep(4200);
+      }
       ask.classList.add('show');
       Sound.say('きょうは ここまでに する？', { who: 'narr' });
     } catch (e) {
@@ -1440,6 +1506,7 @@
       ? '👑 おひめさまを たすけた！ <small>（もういちど あそべるよ）</small>'
       : `こわした おしろ <span class="cs-bars">${'🏚️'.repeat(d)}<i>${'🏰'.repeat(Math.max(0, STAGES.length - 1 - d))}</i>${d < STAGES.length ? '🏯' : ''}</span>`;
     $('#title-scene').classList.toggle('saved', !!save.ending);
+    $('#btn-forms').textContent = `🦸 へんしん ${formsUnlocked()}/${Hero.FORMS.length}`;
     $('#zukan-count').textContent = `${Object.keys(save.caught).length}/${Object.keys(WORDS).length}`;
   }
 
@@ -1447,7 +1514,7 @@
     cancelAll();
     keepAwake(false);
     if (!fromBack && history.state && history.state.play) history.back();
-    ['#overlay-clear', '#overlay-bye', '#overlay-zukan', '#overlay-ending', '#overlay-cloud'].forEach(id => showOverlay(id, false));
+    ['#overlay-clear', '#overlay-bye', '#overlay-zukan', '#overlay-ending', '#overlay-cloud', '#overlay-forms'].forEach(id => showOverlay(id, false));
     $('#actors').innerHTML = '';
     $('#btn-henshin').hidden = true;
     $('#medal-detail').classList.remove('show');
@@ -1520,6 +1587,29 @@
     }
   }
 
+  // ---------- 🦸 へんしん えらび ----------
+  function renderForms() {
+    const n = formsUnlocked();
+    const cur = currentForm();
+    $('#forms-count').textContent = `${n} / ${Hero.FORMS.length}`;
+    $('#forms-grid').innerHTML = Hero.FORMS.map((f, i) => i < n
+      ? `<button class="form-card${i === cur ? ' on' : ''}" data-form="${i}">${heroFigure(i)}` +
+        `<b>${f.title}</b><small>${f.move.name.replace('ひっさつ！ ', '')}</small></button>`
+      : `<div class="form-card locked"><div class="form-q">？</div><b>？？？</b>` +
+        `<small>「${STAGES[i - 1].name}」の だんの ボスを たおすと おぼえる</small></div>`).join('');
+    $('#forms-grid').querySelectorAll('.form-card[data-form]').forEach(b => {
+      b.onclick = () => {
+        save.form = Number(b.dataset.form);
+        writeSave();
+        Sound.unlock();
+        Sound.hush();
+        Sound.say(Hero.FORMS[save.form].title, { who: 'kid' });
+        renderForms();
+        renderTitle();
+      };
+    });
+  }
+
   // ---------- ボタン ----------
   $('#btn-play').onclick = () => { Sound.unlock(); playStage(nextStageIdx()); };
   $('#btn-home').onclick = () => goTitle();
@@ -1531,6 +1621,8 @@
   $('#btn-story').onclick = () => { Sound.unlock(); playIntro(); };
   $('#btn-ending-home').onclick = () => goTitle();
   $('#btn-ending-medal').onclick = () => { goTitle(); renderZukan(); showOverlay('#overlay-zukan', true); };
+  $('#btn-forms').onclick = () => { renderForms(); showOverlay('#overlay-forms', true); };
+  $('#btn-forms-close').onclick = () => showOverlay('#overlay-forms', false);
   $('#btn-zukan-close').onclick = () => showOverlay('#overlay-zukan', false);
   $('#btn-detail-close').onclick = () => $('#medal-detail').classList.remove('show');
   $('#btn-reset').onclick = () => {

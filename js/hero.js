@@ -1,38 +1,42 @@
 // ヒーロー へんしんの みため（ヘルメット・マント・ジェット・ぶき・ポーズ）
-// まいかい ランダムに くみあわせるので「どんな へんしんかな？」が たのしめる
+// へんしんは 11しゅるい。さいしょは「スーパーレッド」だけで、だんの ボスを たおすたびに 1つずつ おぼえる
 window.Hero = (() => {
-  const COLORS = [
-    { name: 'レッド', main: '#ff4757', dark: '#b8222f' },
-    { name: 'ブルー', main: '#3a86ff', dark: '#1d4ed8' },
-    { name: 'イエロー', main: '#ffd60a', dark: '#c99700' },
-    { name: 'グリーン', main: '#2ec27e', dark: '#17804f' },
-    { name: 'ピンク', main: '#ff6fb5', dark: '#c2337a' },
-    { name: 'ブラック', main: '#3d3d4e', dark: '#15151f' },
-    { name: 'シルバー', main: '#d5dde6', dark: '#7d8a99' },
-    { name: 'ゴールド', main: '#ffc83d', dark: '#b07d00' },
-  ];
-  const VISORS = ['#1b263b', '#00b4d8', '#ff3d7f', '#7b2ff7', '#ff9f1c', '#2ec4b6'];
-  const CRESTS = ['v', 'horn', 'star', 'antenna', 'wing', 'fin', 'cat', 'crown'];
   const GOLD = '#ffd60a', GOLD_D = '#b88a00';
-  const JET_PREFIX = ['ジェット', 'スカイ', 'ロケット'];
-  const CAPE_PREFIX = ['スーパー', 'キャプテン', 'ナイト'];
+  const RAINBOW = 'url(#md-R)';
+
+  // weapon: ポーズで もつ ぶき / poses: かくの はしで する ポーズ / move: ひっさつわざ
+  //   move.kind: sword（ひとたち）/ double（バツの ふたたち）/ saber（ひかる バツぎり）/ beam / rainbow（ビーム＋バツぎり）
+  const FORMS = [
+    { title: 'スーパーレッド', color: { name: 'レッド', main: '#ff4757', dark: '#b8222f' }, crest: 'v', gear: 'cape', cape: '#ffd60a',
+      visor: '#1b263b', beam: '#ff4757', poses: ['sword-up', 'slash'], move: { kind: 'sword', name: 'ひっさつ！ レッド スラッシュ！', pose: 'slash' } },
+    { title: 'ジェットブルー', color: { name: 'ブルー', main: '#3a86ff', dark: '#1d4ed8' }, crest: 'horn', gear: 'jet',
+      visor: '#00b4d8', beam: '#00e5ff', poses: ['gun', 'twirl'], move: { kind: 'beam', name: 'ひっさつ！ ブルー ビーム！', pose: 'gun' } },
+    { title: 'サンダーイエロー', color: { name: 'イエロー', main: '#ffd60a', dark: '#c99700' }, crest: 'star', gear: 'cape', cape: '#3a86ff',
+      visor: '#7b2ff7', beam: '#ffd60a', poses: ['saber', 'sword-up'], move: { kind: 'saber', name: 'ひっさつ！ イエロー サンダー！', pose: 'saber' } },
+    { title: 'スカイグリーン', color: { name: 'グリーン', main: '#2ec27e', dark: '#17804f' }, crest: 'antenna', gear: 'jet',
+      visor: '#ff9f1c', beam: '#7cff4d', poses: ['gun', 'twirl', 'saber'], move: { kind: 'beam', name: 'ひっさつ！ グリーン トルネード！', pose: 'gun' } },
+    { title: 'ハートピンク', color: { name: 'ピンク', main: '#ff6fb5', dark: '#c2337a' }, crest: 'cat', gear: 'cape', cape: '#ffd60a',
+      visor: '#7b2ff7', beam: '#ff3d7f', poses: ['double', 'slash'], move: { kind: 'double', name: 'ひっさつ！ ピンク ハート クロス！', pose: 'double' } },
+    { title: 'ナイトシルバー', color: { name: 'シルバー', main: '#d5dde6', dark: '#7d8a99' }, crest: 'wing', gear: 'jet',
+      visor: '#2ec4b6', beam: '#00e5ff', poses: ['saber', 'double'], move: { kind: 'saber', name: 'ひっさつ！ シルバー ムーン セイバー！', pose: 'saber' } },
+    { title: 'シャドーブラック', color: { name: 'ブラック', main: '#3d3d4e', dark: '#15151f' }, crest: 'fin', gear: 'cape', cape: '#ff3d7f',
+      visor: '#ff3d7f', beam: '#b26bff', poses: ['double', 'slash', 'twirl'], move: { kind: 'double', name: 'ひっさつ！ ブラック シャドー クロス！', pose: 'double' } },
+    { title: 'キングゴールド', color: { name: 'ゴールド', main: '#ffc83d', dark: '#b07d00' }, crest: 'crown', gear: 'cape', cape: '#ff4757',
+      visor: '#1b263b', beam: '#ffd60a', poses: ['gun', 'sword-up', 'twirl'], move: { kind: 'beam', name: 'ひっさつ！ ゴールド サンシャイン！', pose: 'gun' } },
+    { title: 'ギャラクシーパープル', color: { name: 'パープル', main: '#9b5de5', dark: '#5a189a' }, crest: 'star', gear: 'jet',
+      visor: '#00e5ff', beam: '#b26bff', poses: ['saber', 'gun', 'double'], move: { kind: 'saber', name: 'ひっさつ！ パープル ギャラクシー！', pose: 'saber' } },
+    { title: 'フレイムオレンジ', color: { name: 'オレンジ', main: '#ff7b00', dark: '#c2410c' }, crest: 'horn', gear: 'cape', cape: '#ffd60a',
+      visor: '#1b263b', beam: '#ff7b00', poses: ['double', 'gun', 'slash'], move: { kind: 'double', name: 'ひっさつ！ オレンジ フレイム クロス！', pose: 'double' } },
+    { title: 'レインボー', color: { name: 'レインボー', main: RAINBOW, dark: '#5a189a', glow: '#ff6bd6' }, crest: 'crown', gear: 'cape', cape: RAINBOW,
+      visor: '#1b263b', beam: 'rainbow', rainbow: true,
+      poses: ['saber', 'double', 'gun', 'twirl', 'sword-up', 'slash'], move: { kind: 'rainbow', name: 'ひっさつ！ レインボー ファイナル アタック！', pose: 'saber' } },
+  ];
 
   const pick = a => a[Math.floor(Math.random() * a.length)];
 
-  function costume(word) {
-    const color = pick(COLORS);
-    const gear = pick(['cape', 'jet']);
-    const prefix = gear === 'jet' ? pick(JET_PREFIX) : pick(CAPE_PREFIX);
-    return {
-      color,
-      visor: pick(VISORS.filter(v => v !== color.main)),
-      crest: pick(CRESTS),
-      gear,
-      cape: pick(COLORS.filter(c => c !== color)).main,
-      name: `${prefix}${color.name} ${word}`,
-      title: `${prefix}${color.name}`,
-      word,
-    };
+  function costume(word, form = 0) {
+    const f = FORMS[Math.max(0, Math.min(FORMS.length - 1, form))];
+    return { ...f, form: FORMS.indexOf(f), word, name: `${f.title} ${word}` };
   }
 
   function star(cx, cy, r, attrs) {
@@ -91,7 +95,9 @@ window.Hero = (() => {
   }
 
   // ぶき（ぜんぶ うえむき・にぎりが した）
-  function weaponSVG(kind, color) {
+  function weaponSVG(kind, beam) {
+    const color = beam === 'rainbow' ? RAINBOW : beam;
+    const glow = beam === 'rainbow' ? '#ff6bd6' : beam;
     if (kind === 'sword') {
       return `<svg viewBox="0 0 40 100" overflow="visible">` +
         `<path d="M20 0 L27 10 L27 66 L13 66 L13 10 Z" fill="url(#hx-blade)" stroke="#6b7a8c" stroke-width="1.5"/>` +
@@ -103,14 +109,14 @@ window.Hero = (() => {
     }
     if (kind === 'saber') {
       return `<svg viewBox="0 0 40 100" overflow="visible">` +
-        `<rect class="blade" x="14" y="-6" width="12" height="74" rx="6" fill="#fff" stroke="${color}" stroke-width="6" style="filter:drop-shadow(0 0 5px ${color})"/>` +
+        `<rect class="blade" x="14" y="-6" width="12" height="74" rx="6" fill="#fff" stroke="${color}" stroke-width="6" style="filter:drop-shadow(0 0 5px ${glow})"/>` +
         `<rect x="13" y="66" width="14" height="30" rx="3" fill="#3d3d4e"/>` +
         `<rect x="13" y="72" width="14" height="4" fill="#9aa5b1"/><rect x="13" y="82" width="14" height="4" fill="#9aa5b1"/>` +
         `<circle cx="20" cy="92" r="2.5" fill="${color}"/></svg>`;
     }
     // ブラスター
     return `<svg viewBox="0 0 40 100" overflow="visible">` +
-      `<rect class="beam" x="14" y="-170" width="12" height="172" rx="6" fill="${color}" style="filter:drop-shadow(0 0 6px ${color})"/>` +
+      `<rect class="beam" x="14" y="-170" width="12" height="172" rx="6" fill="${color}" style="filter:drop-shadow(0 0 6px ${glow})"/>` +
       `<circle class="muzzle" cx="20" cy="4" r="8" fill="${color}"/>` +
       `<rect x="14" y="4" width="12" height="38" rx="5" fill="#d5dde6" stroke="#55606e" stroke-width="1.5"/>` +
       `<rect x="11" y="14" width="18" height="5" rx="2.5" fill="${color}"/><rect x="11" y="26" width="18" height="5" rx="2.5" fill="${color}"/>` +
@@ -128,12 +134,13 @@ window.Hero = (() => {
     { id: 'twirl', weapons: ['blaster'], phrase: 'きまった！', sfx: 'twirl' },
   ];
   let lastPose = null;
-  function pickPose() {
-    const p = pick(POSES.filter(x => x !== lastPose));
+  // その へんしんの ポーズから えらぶ（おなじ ポーズが つづかないように）
+  function pickPose(k) {
+    const list = POSES.filter(p => k.poses.includes(p.id));
+    const p = pick(list.length > 1 ? list.filter(x => x !== lastPose) : list);
     lastPose = p;
     return p;
   }
-  const BEAM_COLORS = ['#00e5ff', '#ff3d7f', '#7cff4d', '#ffd60a', '#b26bff'];
 
   // もじの さいごに でてくる わるもの
   const ENEMIES = [
@@ -152,22 +159,20 @@ window.Hero = (() => {
     return e;
   }
 
-  // ひっさつわざ（けん か じゅう）
+  // ひっさつわざ（へんしんごとに きまっている）
   function finisher(k) {
-    return Math.random() < 0.5
-      ? { kind: 'sword', name: `ひっさつ！ ${k.color.name} スラッシュ！`, pose: POSES.find(p => p.id === 'slash') }
-      : { kind: 'beam', name: `ひっさつ！ ${k.color.name} ビーム！`, pose: POSES.find(p => p.id === 'gun') };
+    return { kind: k.move.kind, name: k.move.name, pose: POSES.find(p => p.id === k.move.pose) };
   }
 
   // こえの ファイルを つくる ための ぜんぶの セリフ（tools/voices で つかう）
   function lines() {
     return {
-      titles: [...JET_PREFIX, ...CAPE_PREFIX].flatMap(p => COLORS.map(c => p + c.name)),
+      titles: FORMS.map(f => f.title),
       poses: POSES.map(p => p.phrase),
-      finishers: COLORS.flatMap(c => [`ひっさつ！ ${c.name} スラッシュ！`, `ひっさつ！ ${c.name} ビーム！`]),
+      finishers: FORMS.map(f => f.move.name),
       enemies: ENEMIES,
     };
   }
 
-  return { costume, helmetSVG, gearSVG, weaponSVG, pickPose, enemy, finisher, lines, beamColor: () => pick(BEAM_COLORS) };
+  return { FORMS, costume, helmetSVG, gearSVG, weaponSVG, pickPose, enemy, finisher, lines };
 })();
