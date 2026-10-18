@@ -727,3 +727,32 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .form-card.locked { background: #f0e8da; }
 .form-card.locked b { margin-top: 6px; opacity: .5; }
 .form-q { width: 92px; height: 92px; display: grid; place-items: center; font-size: 54px; font-weight: 900; color: #cbbd9f; }
+
+/* ---------- へんしん ボタン と へんしん えらび（ボードの すぐ ちかく） ---------- */
+.hero-dock {
+  position: absolute; z-index: 6; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; max-width: calc(100% - 16px);
+}
+.hero-dock.side { transform: translateY(-50%); align-items: flex-start; }
+.form-picker {
+  display: flex; gap: 8px; padding: 8px 10px; background: rgba(255, 255, 255, .95); border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(74, 52, 38, .25); overflow-x: auto; max-width: 100%; animation: popin .3s cubic-bezier(.3, 1.6, .5, 1);
+}
+.form-picker[hidden] { display: none; }
+.hero-dock.side .form-picker { flex-wrap: wrap; border-radius: 24px; }
+.fp-chip {
+  flex-shrink: 0; width: 58px; height: 58px; border-radius: 50%; border: 3px solid #fff; padding: 0;
+  background: radial-gradient(circle at 35% 30%, #fff 0 12%, var(--c) 60%); box-shadow: 0 3px 0 rgba(0, 0, 0, .2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;
+}
+.fp-chip.rainbow { background: conic-gradient(#ff5e5e, #ffe14d, #6ee07a, #4dc3ff, #6b7bff, #d36bff, #ff5e5e); }
+.fp-chip.on { border-color: #ffd60a; box-shadow: 0 0 0 3px #ffd60a, 0 3px 0 rgba(0, 0, 0, .2); }
+.fp-chip .helmet { width: 70%; height: auto; margin-top: 8px; overflow: visible; }
+.fp-chip span {
+  position: absolute; bottom: -2px; font-size: 10px; font-weight: 900; color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .6); white-space: nowrap;
+}
+.fp-close {
+  flex-shrink: 0; width: 40px; height: 40px; align-self: center; border-radius: 50%; border: none;
+  background: #f3e9d7; font-size: 18px; font-weight: 900;
+}

@@ -206,6 +206,24 @@
 
   function resizeBoard() {
     board.style.setProperty('--bw', board.clientWidth + 'px');
+    placeDock();
+  }
+  // へんしん ボタンを ボードの すぐ ちかくに おく
+  function placeDock() {
+    const dock = $('#hero-dock');
+    const wrap = $('#board-wrap').getBoundingClientRect();
+    const b = board.getBoundingClientRect();
+    if (!b.width) return;
+    const side = wrap.bottom - b.bottom < 70 && wrap.right - b.right > 120;
+    dock.classList.toggle('side', side);
+    dock.style.maxWidth = side ? (wrap.right - b.right - 24) + 'px' : '';
+    if (side) {
+      dock.style.left = (b.right - wrap.left + 12) + 'px';
+      dock.style.top = (b.top - wrap.top + b.height / 2) + 'px';
+    } else {
+      dock.style.left = (b.left - wrap.left + b.width / 2) + 'px';
+      dock.style.top = Math.min(b.bottom - wrap.top + 8, wrap.height - 66) + 'px';
+    }
   }
   window.addEventListener('resize', resizeBoard);
 
@@ -381,20 +399,48 @@
         busy = false;
       }
 
-      // かいている とちゅうで「へんしん！」
+      // かいている とちゅうで「へんしん！」（おぼえた へんしんが ふたつ いじょう なら えらぶ）
       const btn = $('#btn-henshin');
-      async function onHenshin(e) {
+      const picker = $('#form-picker');
+      function onHenshin(e) {
         e.preventDefault();
+        if (busy || actor.costume) return;
+        const n = formsUnlocked();
+        if (n <= 1) return doHenshin(0);
+        btn.hidden = true;
+        picker.innerHTML = Hero.FORMS.slice(0, n).map((f, i) =>
+          `<button class="fp-chip${i === currentForm() ? ' on' : ''}${f.rainbow ? ' rainbow' : ''}" data-form="${i}" ` +
+          `style="--c:${f.color.glow || f.color.main}" aria-label="${f.title}">` +
+          `${Hero.helmetSVG(Hero.costume('', i))}<span>${f.color.name}</span></button>`).join('') +
+          '<button class="fp-close" aria-label="やめる">✕</button>';
+        picker.hidden = false;
+        setMessage('どの へんしんに する？');
+      }
+      picker.onclick = e => {
+        const chip = e.target.closest('button');
+        if (!chip) return;
+        picker.hidden = true;
+        if (chip.classList.contains('fp-close')) {
+          btn.hidden = false;
+          setMessage('なぞってね！');
+          return;
+        }
+        save.form = Number(chip.dataset.form);
+        writeSave();
+        doHenshin(save.form);
+      };
+      async function doHenshin(form) {
         if (busy || actor.costume) return;
         busy = true;
         active = false;
         btn.hidden = true;
+        picker.hidden = true;
         const x0 = actor.x, y0 = actor.y, s0 = actor.size;
         const S = 28;
         const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
         try {
           await moveTo(actor, clamp(x0, S / 2, VB - S / 2), clamp(y0, S / 2 + 4, VB - S / 2), 250, { size: S });
-          await transform(actor);
+          await transform(actor, form);
           await moveTo(actor, x0, y0, 300, { size: s0 });
         } catch (err) { return; }
         setMessage('ゆびで なぞって ワニを おいかけよう！');
@@ -403,6 +449,7 @@
         busy = false;
       }
       if (!actor.costume) {
+        placeDock();
         btn.hidden = false;
         btn.addEventListener('pointerdown', onHenshin);
         setMessage('なぞってね！');
@@ -468,6 +515,7 @@
         clearInterval(hintTimer);
         cancelAnimationFrame(raf);
         btn.hidden = true;
+        picker.hidden = true;
         btn.removeEventListener('pointerdown', onHenshin);
         board.removeEventListener('pointerdown', onDown);
         board.removeEventListener('pointermove', onMove);
@@ -498,8 +546,8 @@
     return Number.isInteger(save.form) && save.form < n ? save.form : n - 1;
   }
 
-  async function transform(actor) {
-    const k = Hero.costume(actor.info.word, currentForm());
+  async function transform(actor, form = currentForm()) {
+    const k = Hero.costume(actor.info.word, form);
     Sound.henshin();
     Sound.say('ヒーロー へんしん！', { who: 'kid' });
     setMessage('ヒーロー へんしん！');
@@ -1320,6 +1368,7 @@
     $('#fx').innerHTML = '';
     $('#medal-pop').classList.remove('show');
     $('#btn-henshin').hidden = true;
+    $('#form-picker').hidden = true;
     $('#power').hidden = true;
     svg.classList.remove('dim');
     const label = $('#stage-label');
