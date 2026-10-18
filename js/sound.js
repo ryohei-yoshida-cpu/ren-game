@@ -63,7 +63,7 @@ window.Sound = (() => {
   }
 
   // ---- こえ ----
-  // VOICEVOX で つくった こえ（audio/voice）を ならす。ない セリフだけ ブラウザの よみあげを つかう
+  // じぶんたちで とった こえ（VoiceBox）→ VOICEVOX で つくった こえ（audio/voice）→ ブラウザの よみあげ の じゅんに つかう
   //   who: kid（ひらがなの なかま）/ narr（ナレーション）/ hime（おひめさま）/ wani（ワニ）/ foe（わるもの）
   //   text の '|' で くぎると、つくった こえを つなげて ならす（ヒーローの なまえ など）
   const VOICE_DIR = 'audio/voice/';
@@ -85,15 +85,28 @@ window.Sound = (() => {
       if (p && p.then) p.then(res, rej);
     });
   }
-  function clip(file) {
-    if (!clips.has(file)) {
-      const p = fetch(VOICE_DIR + file).then(r => r.arrayBuffer()).then(decode);
-      p.catch(() => clips.delete(file));
-      clips.set(file, p);
+  const VB = window.VoiceBox;
+  if (VB) VB.onChange(k => { if (k) clips.delete('c:' + k); else clips.clear(); });
+
+  // id は 'c:セリフ'（じぶんの こえ）か 'v:ファイル'（VOICEVOX）
+  function clip(id) {
+    if (!clips.has(id)) {
+      const src = id.startsWith('c:')
+        ? VB.blob(id.slice(2)).then(b => b.arrayBuffer())
+        : fetch(VOICE_DIR + id.slice(2)).then(r => r.arrayBuffer());
+      const p = src.then(decode);
+      p.catch(() => clips.delete(id));
+      clips.set(id, p);
       // つかいおわった ものは すこしずつ わすれる（メモリ たいさく）
       if (clips.size > 60) clips.delete(clips.keys().next().value);
     }
-    return clips.get(file);
+    return clips.get(id);
+  }
+  function clipId(who, text) {
+    const k = `${who}|${text}`;
+    if (VB && VB.has(k)) return 'c:' + k;
+    const f = voiceIndex && voiceIndex[k];
+    return f ? 'v:' + f : null;
   }
   function playBuffer(buf) {
     return new Promise(res => {
@@ -125,8 +138,8 @@ window.Sound = (() => {
   function say(text, opts = {}) {
     const who = opts.who || 'narr';
     const parts = text.split('|').map(t => t.trim());
-    const files = voiceIndex && parts.map(t => voiceIndex[`${who}|${t}`]);
-    if (!files || files.some(f => !f)) {
+    const files = parts.map(t => clipId(who, t));
+    if (files.some(f => !f)) {
       speak(parts.join(' '), opts);
       return;
     }
@@ -157,6 +170,7 @@ window.Sound = (() => {
   function preloadVoices() {
     if (!voiceIndex) return;
     const files = Object.entries(voiceIndex).filter(([k]) => k !== '_v').map(([, f]) => f);
+    // VOICEVOX の こえだけ（じぶんの こえは もう たんまつに ある）
     let i = 0;
     const next = () => {
       if (i >= files.length) return;
@@ -206,6 +220,7 @@ window.Sound = (() => {
     unlock,
     say,
     hush,
+    voiceIndex: () => voiceIndex,
     sing,
     pop() { tone(500, 0, 0.15, { type: 'sine', vol: 0.25, slide: 2.2 }); },
     hop() { tone(350, 0, 0.18, { type: 'triangle', vol: 0.12, slide: 1.8 }); },

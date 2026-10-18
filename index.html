@@ -67,6 +67,7 @@
       <div class="title-foot">
         <div class="title-foot-row">
           <button id="btn-story" class="btn btn-soft">📖 おはなし</button>
+          <button id="btn-studio" class="btn btn-soft">🎙 こえ</button>
           <button id="btn-zukan" class="btn btn-soft">🏅 メダル <span id="zukan-count"></span></button>
         </div>
         <button id="btn-reset" class="btn-tiny">さいしょから（おとなよう）</button>
@@ -157,6 +158,30 @@
       </div>
     </div>
 
+    <!-- こえの スタジオ -->
+    <div id="overlay-studio" class="overlay">
+      <div class="panel panel-wide studio">
+        <div class="studio-head">
+          <div class="studio-title">🎙 こえの スタジオ</div>
+          <button id="studio-close" class="btn-icon" aria-label="とじる">✕</button>
+        </div>
+        <div id="studio-request" class="studio-request" hidden></div>
+        <div class="studio-me">
+          <label>なまえ <input id="studio-name" maxlength="12" placeholder="パパ"></label>
+          <label class="studio-use"><input type="checkbox" id="studio-use"> とった こえを つかう</label>
+        </div>
+        <div id="studio-tabs" class="studio-tabs"></div>
+        <input id="studio-search" class="studio-search" type="search" placeholder="🔍 セリフを さがす">
+        <div id="studio-list" class="studio-list"></div>
+        <p id="studio-msg" class="studio-msg" aria-live="polite"></p>
+        <div class="studio-foot">
+          <button id="studio-ask" class="btn btn-soft">📨 えらんだ セリフを LINEで たのむ</button>
+          <button id="studio-send" class="btn btn-go">📤 とった こえを おくる</button>
+          <label class="btn btn-soft studio-import">📥 こえを よみこむ<input id="studio-file" type="file" accept=".txt,.json,text/plain,application/json" hidden></label>
+        </div>
+      </div>
+    </div>
+
     <!-- メダル コレクション -->
     <div id="overlay-zukan" class="overlay">
       <div class="panel panel-wide">
@@ -181,9 +206,11 @@
 
   <script src="js/strokes.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/voicebox.js"></script>
   <script src="js/sound.js"></script>
   <script src="js/hero.js"></script>
   <script src="js/medal.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/studio.js"></script>
 </body>
 </html>

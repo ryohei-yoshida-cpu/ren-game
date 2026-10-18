@@ -625,3 +625,51 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 
 .castle-status .cs-bars { letter-spacing: 0; font-size: 14px; }
 .castle-status .cs-bars i { font-style: normal; opacity: .35; }
+
+/* ---------- こえの スタジオ ---------- */
+#overlay-studio { padding: 8px; }
+.studio { height: 100%; max-width: 720px; gap: 8px; padding: 14px 12px; overflow: hidden; text-align: left; align-items: stretch; }
+.studio-head { display: flex; align-items: center; justify-content: space-between; }
+.studio-title { font-size: 24px; font-weight: 900; color: var(--accent); }
+.studio-head .btn-icon { width: 44px; height: 44px; font-size: 20px; }
+.studio-request { background: #fff3c4; border-radius: 14px; padding: 10px 12px; font-size: 16px; font-weight: 700; line-height: 1.5; }
+.studio-me { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 15px; font-weight: 700; }
+.studio-me input[type=text], .studio-me input:not([type]) {
+  font: inherit; width: 8em; padding: 6px 10px; border-radius: 10px; border: 2px solid #ead6b3; margin-left: 4px;
+}
+.studio-use { display: flex; align-items: center; gap: 4px; }
+.studio-use input { width: 20px; height: 20px; }
+.studio-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; flex-shrink: 0; }
+.studio-tabs[hidden], .studio-search[hidden], .studio-foot [hidden] { display: none; }
+.stab {
+  flex-shrink: 0; border: none; border-radius: 999px; padding: 8px 14px; font-size: 15px; font-weight: 900;
+  background: #f3e9d7; display: flex; flex-direction: column; align-items: center; line-height: 1.1;
+}
+.stab small { font-size: 11px; opacity: .7; }
+.stab.on { background: var(--go); color: #fff; }
+.studio-search { font: inherit; font-size: 15px; padding: 8px 12px; border-radius: 12px; border: 2px solid #ead6b3; flex-shrink: 0; }
+.studio-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 2px; min-height: 120px; }
+.sgroup { font-size: 13px; font-weight: 900; color: var(--go-dark); margin-top: 6px; }
+.sempty { text-align: center; opacity: .6; }
+.srow {
+  display: flex; align-items: center; gap: 6px; background: #fbf6ec; border-radius: 14px; padding: 8px;
+  border: 2px solid transparent;
+}
+.srow.mine { background: #fff4d6; border-color: #ffd56b; }
+.srow.recording { border-color: #ff4757; background: #ffe8ea; }
+.sr-pick { width: 22px; height: 22px; flex-shrink: 0; }
+.sr-text { flex: 1; font-size: 17px; font-weight: 700; line-height: 1.35; word-break: break-all; }
+.sr-text small { display: block; font-size: 11px; font-weight: 700; opacity: .6; }
+.srow.mine .sr-text small { color: #c2410c; opacity: 1; }
+.srow button {
+  flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; border: none; font-size: 18px; font-weight: 900;
+  background: #fff; box-shadow: 0 3px 0 rgba(74, 52, 38, .15);
+}
+.srow button[hidden] { display: none; }
+.srow .sr-rec { color: #ff4757; font-size: 22px; }
+.srow .sr-rec.on { background: #ff4757; color: #fff; animation: pop .6s ease-in-out infinite alternate; }
+.studio-msg { margin: 0; min-height: 1.4em; font-size: 14px; font-weight: 700; color: #c2410c; text-align: center; }
+.studio-msg.pop { animation: pop .3s; }
+.studio-foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; flex-shrink: 0; }
+.studio-foot .btn { font-size: 15px; padding: 10px 16px; }
+.studio-import { cursor: pointer; }
