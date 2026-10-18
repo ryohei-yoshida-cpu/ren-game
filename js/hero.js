@@ -14,13 +14,15 @@ window.Hero = (() => {
   const VISORS = ['#1b263b', '#00b4d8', '#ff3d7f', '#7b2ff7', '#ff9f1c', '#2ec4b6'];
   const CRESTS = ['v', 'horn', 'star', 'antenna', 'wing', 'fin', 'cat', 'crown'];
   const GOLD = '#ffd60a', GOLD_D = '#b88a00';
+  const JET_PREFIX = ['ジェット', 'スカイ', 'ロケット'];
+  const CAPE_PREFIX = ['スーパー', 'キャプテン', 'ナイト'];
 
   const pick = a => a[Math.floor(Math.random() * a.length)];
 
   function costume(word) {
     const color = pick(COLORS);
     const gear = pick(['cape', 'jet']);
-    const prefix = gear === 'jet' ? pick(['ジェット', 'スカイ', 'ロケット']) : pick(['スーパー', 'キャプテン', 'ナイト']);
+    const prefix = gear === 'jet' ? pick(JET_PREFIX) : pick(CAPE_PREFIX);
     return {
       color,
       visor: pick(VISORS.filter(v => v !== color.main)),
@@ -28,6 +30,8 @@ window.Hero = (() => {
       gear,
       cape: pick(COLORS.filter(c => c !== color)).main,
       name: `${prefix}${color.name} ${word}`,
+      title: `${prefix}${color.name}`,
+      word,
     };
   }
 
@@ -155,5 +159,15 @@ window.Hero = (() => {
       : { kind: 'beam', name: `ひっさつ！ ${k.color.name} ビーム！`, pose: POSES.find(p => p.id === 'gun') };
   }
 
-  return { costume, helmetSVG, gearSVG, weaponSVG, pickPose, enemy, finisher, beamColor: () => pick(BEAM_COLORS) };
+  // こえの ファイルを つくる ための ぜんぶの セリフ（tools/voices で つかう）
+  function lines() {
+    return {
+      titles: [...JET_PREFIX, ...CAPE_PREFIX].flatMap(p => COLORS.map(c => p + c.name)),
+      poses: POSES.map(p => p.phrase),
+      finishers: COLORS.flatMap(c => [`ひっさつ！ ${c.name} スラッシュ！`, `ひっさつ！ ${c.name} ビーム！`]),
+      enemies: ENEMIES,
+    };
+  }
+
+  return { costume, helmetSVG, gearSVG, weaponSVG, pickPose, enemy, finisher, lines, beamColor: () => pick(BEAM_COLORS) };
 })();

@@ -88,8 +88,31 @@ python3 -m http.server 8000
 ```
 
 ### こえ について
-こえは ブラウザの よみあげ（Web Speech API）を つかっています。マナーモードを はずし、おとを だしてください。
-にほんごの こえ（Kyoko など）が ない たんまつでは、こえの かわりに ふきだしの もじだけが でます。
+こえは [VOICEVOX](https://voicevox.hiroshiba.jp/) で まえもって つくった おんせい（`audio/voice/*.mp3`）を ならしています。
+いちど ひらくと ぜんぶ ダウンロードされるので、オフラインでも こえが でます。マナーモードは はずしてください。
+
+| やく | こえ |
+| --- | --- |
+| ひらがなの なかま・ヒーロー | VOICEVOX:ずんだもん |
+| ナレーション | VOICEVOX:春日部つむぎ |
+| おひめさま | VOICEVOX:四国めたん（あまあま） |
+| わるい ワニ | VOICEVOX:玄野武宏 |
+| わるもの | VOICEVOX:白上虎太郎（おこ） |
+
+#### セリフを かえた とき（こえの つくりなおし）
+`js/game.js` の `Sound.say('セリフ', { who: '...' })` や `js/data.js` を かえたら、こえを つくりなおします（パソコン・Linux）。
+こえの ファイルが ない セリフは、ブラウザの よみあげで しゃべります。
+
+```sh
+node tools/voices/lines.mjs     # セリフを あつめる → tools/voices/lines.json
+VV_DIR=/path/to/voicevox python tools/voices/gen.py   # ない ぶんだけ つくる → audio/voice/
+```
+
+`VV_DIR` には VOICEVOX CORE（0.16）の つぎの ものを おきます（GitHub の Releases から ダウンロード）。
+python には `voicevox_core-0.16.x-...whl` を pip で いれておきます。ffmpeg も つかいます。
+- `voicevox_onnxruntime-linux-x64-1.17.3/`（VOICEVOX/onnxruntime-builder）
+- `open_jtalk_dic_utf_8-1.11/`（r9y9/open_jtalk）
+- `vvms/0.vvm`, `vvms/4.vvm`, `vvms/9.vvm`（VOICEVOX/voicevox_vvm）
 
 ## ファイル
 
@@ -99,7 +122,8 @@ python3 -m http.server 8000
 | `css/style.css` | みため・アニメーション |
 | `js/data.js` | ひらがな ⇔ キャラ・ことば、ステージ（だん）の ていぎ |
 | `js/strokes.js` | かきじゅんデータ（KanjiVG より） |
-| `js/sound.js` | こうかおん・うた・よみあげ |
+| `js/sound.js` | こうかおん・うた・こえ |
+| `audio/voice/`, `tools/voices/` | VOICEVOX の こえと、それを つくる スクリプト |
 | `js/hero.js` | ヒーローの ヘルメット・マント・ジェット・ぶき・ポーズ・わるもの・ひっさつわざ |
 | `js/medal.js` | ひらがなメダルの みため・だんかい |
 | `js/game.js` | ゲームの すすめかた・なぞり はんてい・ほぞん |
@@ -111,3 +135,6 @@ python3 -m http.server 8000
 
 かきじゅんデータ（`js/strokes.js`）は [KanjiVG](https://kanjivg.tagaini.net)（Copyright (C) 2009-2011 Ulrich Apel）を もとにしており、
 [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) で ていきょうされています。
+
+こえ（`audio/voice/`）は VOICEVOX で つくりました。VOICEVOX:ずんだもん / VOICEVOX:春日部つむぎ / VOICEVOX:四国めたん / VOICEVOX:玄野武宏 / VOICEVOX:白上虎太郎
+（[VOICEVOX 音声モデル 利用規約](https://github.com/VOICEVOX/voicevox_vvm) と 各キャラクターの 利用規約に したがいます）

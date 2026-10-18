@@ -492,7 +492,7 @@
   async function transform(actor) {
     const k = Hero.costume(actor.info.word);
     Sound.henshin();
-    Sound.say('ヒーロー へんしん！', { pitch: 1.3, rate: 1.1 });
+    Sound.say('ヒーロー へんしん！', { who: 'kid' });
     setMessage('ヒーロー へんしん！');
     board.classList.remove('flash');
     void board.offsetWidth;
@@ -508,7 +508,7 @@
     if (k.gear === 'jet') Sound.jet(); else Sound.whoosh();
     actor.say(`${k.name} さんじょう！`, 2200);
     setMessage(`${k.name} さんじょう！`);
-    Sound.say(`${k.name}、さんじょう！`, { pitch: 1.2, rate: 1.05 });
+    Sound.say(`${k.title}|${k.word}|さんじょう！`, { who: 'kid' });
     await sleep(1800);
   }
 
@@ -522,7 +522,7 @@
     actor.pose(p);
     Sound[p.sfx]();
     actor.say(p.phrase, big ? 1400 : 1000);
-    Sound.say(p.phrase, { pitch: 1.3, rate: 1.2 });
+    Sound.say(p.phrase, { who: 'kid' });
     setTimeout(() => sparks(actor.x, actor.y - S / 3, big ? 10 : 6, ['✨', '⭐', '💥']), 300);
     await sleep(big ? 1500 : 1050);
     actor.unpose();
@@ -639,7 +639,7 @@
     croc.once('popin');
     croc.say(text, 3200, { below: true });
     setMessage(text);
-    Sound.say(text, { pitch: 0.7, rate: 1.05 });
+    Sound.say(text, { who: 'wani' });
     await sleep(3300);
     croc.remove();
   }
@@ -684,7 +684,7 @@
     foe.set(castle.x, castle.y, castle.size * 0.4);
     const intro = kind === 'strong' ? `つよい ${e.name} が でてきた！` : `あっ！ ${e.name} が でてきた！`;
     setMessage(intro);
-    Sound.say(intro, { pitch: 1.3 });
+    Sound.say(intro, { who: 'narr' });
     actor.mode('running');
     foe.mode('running');
     await Promise.all([
@@ -696,7 +696,7 @@
     actor.face(1);
     foe.face(-1);
     foe.say(e.cry, 1600);
-    Sound.say(e.cry, { pitch: 0.6, rate: 0.9 });
+    Sound.say(e.cry, { who: 'foe' });
     await sleep(1300);
 
     await clash(actor, foe, y);
@@ -730,7 +730,7 @@
     Sound.boom();
     sparks(castle.x, castle.y, 12, ['💥', '💨', '🧱']);
     setMessage('おしろが こわれた！');
-    Sound.say('おしろが こわれた！', { pitch: 1.4 });
+    Sound.say('おしろが こわれた！', { who: 'narr' });
     await sleep(1400);
     const croc = makeCarrier(Math.max(castle.size * 0.7, 16));
     croc.set(castle.x, castle.y, croc.size);
@@ -739,7 +739,7 @@
     const text = FLEE[ctx.stageIdx % FLEE.length];
     croc.say(text, 3200, { below: true });
     setMessage(text);
-    Sound.say(text, { pitch: 0.7, rate: 1.05 });
+    Sound.say(text, { who: 'wani' });
     await sleep(3300);
     croc.mode('running');
     croc.say('すたこら さっさー！', 1200, { below: true });
@@ -808,7 +808,7 @@
     Sound.charge();
     actor.say(f.name, 2600);
     setMessage(f.name);
-    Sound.say(f.name, { pitch: 1.2, rate: 1.0 });
+    Sound.say(f.name, { who: 'kid' });
     sparks(actor.x, actor.y, 8, ['⚡', '✨']);
     await sleep(1300);
     actor.el.classList.remove('charge');
@@ -844,7 +844,7 @@
     sparks(foe.x, foe.y, 14, ['💥', '⭐', '✨', '🌟']);
     const cry = dest === 'sky' ? 'おぼえてろ〜！' : 'やられた〜！';
     foe.say(cry, 1400);
-    Sound.say(cry, { pitch: 0.7 });
+    Sound.say(cry, { who: dest === 'sky' ? 'wani' : 'foe' });
     await sleep(500);
     actor.unpose();
     if (dest === 'castle') {
@@ -858,7 +858,7 @@
     foe.remove();
     actor.mode('happy');
     actor.say('せいぎの しょうり！', 1600);
-    Sound.say('せいぎの しょうり！', { pitch: 1.3 });
+    Sound.say('せいぎの しょうり！', { who: 'kid' });
     await sleep(1400);
   }
 
@@ -871,7 +871,7 @@
     princess.once('popin');
     princess.mode('happy');
     princess.say('ランラン ラン♪', 2000);
-    Sound.say('ランラン ラン', { pitch: 2 });
+    Sound.say('ランラン ラン', { who: 'hime' });
     await sleep(2200);
 
     const croc = makeCroc(34);
@@ -884,19 +884,19 @@
     const line = 'ワニワニ〜！ おひめさまは いただきだもんねー！';
     croc.say(line, 3000);
     setMessage(line);
-    Sound.say(line, { pitch: 0.7 });
+    Sound.say(line, { who: 'wani' });
     await sleep(3000);
 
     princess.mode(null);
     princess.say('きゃー！', 1200);
-    Sound.say('きゃー', { pitch: 2 });
+    Sound.say('きゃー', { who: 'hime' });
     croc.mode('running');
     await moveTo(croc, princess.x + 16, y, 400, { ease: easeIn });
     Sound.bonk();
     // ワニが おひめさまを かかえて おしろへ
     princess.say('たすけてー！', 3000);
     setMessage('おひめさまが さらわれた！');
-    Sound.say('たすけてー！', { pitch: 2 });
+    Sound.say('たすけてー！', { who: 'hime' });
     const c0 = { x: croc.x, y: croc.y, s: croc.size };
     const p0 = { s: princess.size };
     await tween(1600 * PACE, t => {
@@ -925,7 +925,7 @@
     const vow = 'たいへんだ！ おひめさまを たすけに いくぞ！';
     ant.say(vow, 3000);
     setMessage(vow);
-    Sound.say(vow, { pitch: 1.4 });
+    Sound.say(vow, { who: 'kid' });
     await sleep(3200);
     await crocTaunt('くやしかったら ここまで おいでー！ だもんねー！');
     ant.mode('running');
@@ -955,7 +955,7 @@
     board.classList.add('flash');
     sparks(castle.x, castle.y, 16, ['💥', '🔥', '⭐', '💫']);
     setMessage('おしろが ばくはつした！');
-    Sound.say('おしろが ばくはつした！', { pitch: 1.4 });
+    Sound.say('おしろが ばくはつした！', { who: 'narr' });
     await sleep(1400);
 
     // ワニの ボスが でてくる
@@ -973,17 +973,17 @@
     croc.mode('idle');
     croc.face(-1);
     princess.say('たすけてー！', 1800);
-    Sound.say('たすけてー！', { pitch: 2 });
+    Sound.say('たすけてー！', { who: 'hime' });
     await sleep(1600);
     const rage = 'よくも おしろを〜！ ほんきで いくもんねー！';
     croc.say(rage, 3000);
     setMessage(rage);
-    Sound.say(rage, { pitch: 0.6 });
+    Sound.say(rage, { who: 'wani' });
     await sleep(3000);
 
     // さいごは ありの ヒーロー
     actor.say('ありさん、たのんだ！', 1600);
-    Sound.say('ありさん、たのんだ！', { pitch: 1.5 });
+    Sound.say('ありさん、たのんだ！', { who: 'kid' });
     actor.mode('running');
     const ant = new Actor('あ');
     ant.set(offscreenX(-1), y, 30);
@@ -998,7 +998,7 @@
     const brave = 'おひめさま、いま たすけるぞ！';
     ant.say(brave, 2400);
     setMessage(brave);
-    Sound.say(brave, { pitch: 1.4 });
+    Sound.say(brave, { who: 'kid' });
     await sleep(2400);
     await transform(ant);
 
@@ -1020,21 +1020,21 @@
     const thanks = 'ありがとう！ わたしの ヒーロー！';
     princess.say(thanks, 2400);
     setMessage(thanks);
-    Sound.say(thanks, { pitch: 1.9 });
+    Sound.say(thanks, { who: 'hime' });
     await sleep(2600);
     // ほっぺに チュー
     princess.mode(null);
     await moveTo(princess, ant.x + 20, y - 3, 500);
     princess.say('チュッ♡', 1600);
     Sound.kiss();
-    Sound.say('チュッ', { pitch: 2 });
+    Sound.say('チュッ', { who: 'hime' });
     ant.el.classList.add('blush');
     sparks(ant.x + 5, ant.y - 8, 12, ['💕', '💗', '💖']);
     await sleep(1500);
     ant.mode('happy');
     princess.mode('happy');
     ant.say('え、えへへ…', 1800);
-    Sound.say('えへへ', { pitch: 1.4 });
+    Sound.say('えへへ', { who: 'kid' });
     await sleep(2200);
   }
 
@@ -1046,7 +1046,7 @@
     confetti(ov.querySelector('.confetti'));
     showOverlay('#overlay-ending', true);
     Sound.fanfare();
-    setTimeout(() => Sound.say('おひめさまを たすけたよ！ ひらがな ぜんぶ クリア！ おめでとう！', { pitch: 1.5 }), 1000);
+    setTimeout(() => Sound.say('おひめさまを たすけたよ！ ひらがな ぜんぶ クリア！ おめでとう！', { who: 'narr' }), 1000);
   }
 
   // ---------- メダル ゲット ----------
@@ -1074,7 +1074,7 @@
     }
     label.innerHTML = `${Medal.message(n)}<small>${n}かいめ ・ ${Medal.nextGoal(n)}</small>`;
     sparks(VB / 2, VB * 0.42, 10, ['✨', '⭐', '🌟']);
-    Sound.say(Medal.message(n), { pitch: 1.4 });
+    Sound.say(Medal.message(n), { who: 'narr' });
     await sleep(2300);
     pop.classList.remove('show');
     await sleep(250);
@@ -1112,7 +1112,7 @@
     Sound.door();
     croc.mode('running');
     croc.say('ワニワニ〜！', 1500);
-    Sound.say('ワニワニー！', { pitch: 0.7, rate: 1.1 });
+    Sound.say('ワニワニー！', { who: 'wani' });
     setMessage('ワニが にげていく！');
     const CROC_SIZE = 18;
     for (const s of letter) {
@@ -1137,7 +1137,7 @@
     await moveTo(croc, first.pts[j].x, first.pts[j].y, 600, { arc: 16 });
     croc.mode('wiggle');
     croc.say('ここまで おいでー！', 1800);
-    Sound.say('ここまで おいでー！', { pitch: 0.7 });
+    Sound.say('ここまで おいでー！', { who: 'wani' });
     await sleep(900);
 
     // ひらがなの さきっぽに キャラが あらわれる
@@ -1148,7 +1148,7 @@
     actor.mode('wiggle');
     actor.face(first.pts[j].x - first.pts[0].x);
     actor.say('まてまてー！', 1800);
-    Sound.say('まてまてー！', { pitch: 1.6 });
+    Sound.say('まてまてー！', { who: 'kid' });
     setMessage('ゆびで なぞって ワニを おいかけよう！');
 
     await trace(letter, actor, croc);
@@ -1195,13 +1195,13 @@
     oldA.face(1);
     newA.face(-1);
     oldA.say('なかまに なって たすけてくれ！', 2400);
-    Sound.say('なかまに なって、たすけてくれ！', { pitch: 1.3 });
+    Sound.say('なかまに なって、たすけてくれ！', { who: 'kid' });
     await sleep(2400);
     newA.once('popin');
     newA.mode('happy');
     newA.say('わかった！', 1600);
     Sound.caught();
-    Sound.say('わかった！', { pitch: 1.8 });
+    Sound.say('わかった！', { who: 'kid' });
     await sleep(1500);
 
     // こうたい
@@ -1366,7 +1366,7 @@
     confetti(ov.querySelector('.confetti'));
     showOverlay('#overlay-clear', true);
     Sound.fanfare();
-    setTimeout(() => Sound.say('クリア！ すごいね！', { pitch: 1.5 }), 900);
+    setTimeout(() => Sound.say('クリア！ すごいね！', { who: 'narr' }), 900);
 
     const peek = ov.querySelector('.next-peek');
     const more = $('#btn-more');
@@ -1386,7 +1386,7 @@
     try {
       await sleep(2600);
       ask.classList.add('show');
-      Sound.say('きょうは ここまでに する？', { pitch: 1.4 });
+      Sound.say('きょうは ここまでに する？', { who: 'narr' });
     } catch (e) {
       ignoreCancel(e);
     }
@@ -1402,7 +1402,7 @@
     $('#overlay-bye .bye-parade').innerHTML =
       [...new Set(caughtToday)].map(c => `<span class="mini-medal">${Medal.svg(c, save.caught[c])}</span>`).join('');
     showOverlay('#overlay-bye', true);
-    Sound.say('きょうも がんばったね。また あしたね！', { pitch: 1.4 });
+    Sound.say('きょうも がんばったね。また あしたね！', { who: 'narr' });
   }
 
   // ---------- タイトル ----------
@@ -1495,7 +1495,7 @@
     }
     d.querySelector('.md-ladder').innerHTML = ladder;
     d.classList.add('show');
-    if (n) Sound.say(`${WORDS[c].word}の ${c}`, { pitch: 1.4 });
+    if (n) Sound.say(`${WORDS[c].word}の ${c}`, { who: 'kid' });
   }
 
   async function playIntro() {

@@ -62,7 +62,56 @@ window.Sound = (() => {
     src.start(t);
   }
 
-  function say(text, { pitch = 1.4, rate = 1.0, volume = 1 } = {}) {
+  // ---- こえ ----
+  // VOICEVOX で つくった こえ（audio/voice）を ならす。ない セリフだけ ブラウザの よみあげを つかう
+  //   who: kid（ひらがなの なかま）/ narr（ナレーション）/ hime（おひめさま）/ wani（ワニ）/ foe（わるもの）
+  //   text の '|' で くぎると、つくった こえを つなげて ならす（ヒーローの なまえ など）
+  const VOICE_DIR = 'audio/voice/';
+  let voiceIndex = null;
+  const clips = new Map();   // ファイル → AudioBuffer の Promise
+  let queue = Promise.resolve();
+  let gen = 0;
+  let playing = null;
+
+  fetch(VOICE_DIR + 'index.json')
+    .then(r => r.json())
+    .then(j => { voiceIndex = j; })
+    .catch(() => { /* こえが ない ときは よみあげで */ });
+
+  function decode(buf) {
+    const c = ac();
+    return new Promise((res, rej) => {
+      const p = c.decodeAudioData(buf, res, rej);
+      if (p && p.then) p.then(res, rej);
+    });
+  }
+  function clip(file) {
+    if (!clips.has(file)) {
+      const p = fetch(VOICE_DIR + file).then(r => r.arrayBuffer()).then(decode);
+      p.catch(() => clips.delete(file));
+      clips.set(file, p);
+      // つかいおわった ものは すこしずつ わすれる（メモリ たいさく）
+      if (clips.size > 60) clips.delete(clips.keys().next().value);
+    }
+    return clips.get(file);
+  }
+  function playBuffer(buf) {
+    return new Promise(res => {
+      const c = ac();
+      if (!c) return res();
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      src.connect(c.destination);
+      let done = false;
+      const end = () => { if (!done) { done = true; if (playing === src) playing = null; res(); } };
+      src.onended = end;
+      setTimeout(end, buf.duration * 1000 + 400);   // おとが とまっていても さきに すすむ
+      playing = src;
+      src.start();
+    });
+  }
+
+  function speak(text, { pitch = 1.2, rate = 1.0, volume = 1 } = {}) {
     if (!synth) return;
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'ja-JP';
@@ -73,14 +122,58 @@ window.Sound = (() => {
     synth.speak(u);
   }
 
+  function say(text, opts = {}) {
+    const who = opts.who || 'narr';
+    const parts = text.split('|').map(t => t.trim());
+    const files = voiceIndex && parts.map(t => voiceIndex[`${who}|${t}`]);
+    if (!files || files.some(f => !f)) {
+      speak(parts.join(' '), opts);
+      return;
+    }
+    const my = gen;
+    const loads = files.map(clip);   // すぐ よみこみ はじめる
+    queue = queue.then(async () => {
+      for (const l of loads) {
+        if (my !== gen) return;
+        let buf;
+        try { buf = await l; } catch (e) { return; }
+        if (my !== gen) return;
+        await playBuffer(buf);
+      }
+    });
+  }
+
   function hush() {
+    gen++;
+    queue = Promise.resolve();
+    if (playing) {
+      try { playing.stop(); } catch (e) { /* もう とまっている */ }
+      playing = null;
+    }
     if (synth) synth.cancel();
   }
 
+  // こえを まえもって ダウンロードして おく（オフラインでも ならせるように）
+  function preloadVoices() {
+    if (!voiceIndex) return;
+    const files = Object.entries(voiceIndex).filter(([k]) => k !== '_v').map(([, f]) => f);
+    let i = 0;
+    const next = () => {
+      if (i >= files.length) return;
+      fetch(VOICE_DIR + files[i++]).catch(() => {}).finally(next);
+    };
+    for (let k = 0; k < 3; k++) next();
+  }
+
   // さいしょの タップで おとを だせるように する（iPhone/iPad たいさく）
+  let unlocked = false;
   function unlock() {
     ac();
-    if (synth) say(' ', { volume: 0 });
+    if (synth) speak(' ', { volume: 0 });
+    if (!unlocked) {
+      unlocked = true;
+      setTimeout(preloadVoices, 3000);
+    }
   }
 
   // 「い、い、いぬの い♪」
@@ -90,12 +183,12 @@ window.Sound = (() => {
     const key = [0, 2, 4, 5, 7, -3][char.charCodeAt(0) % 6];
     const n = x => midi(x + key);
     // メロディ
-    tone(n(72), 0, beat * 0.8, { type: 'square', vol: 0.06 });
-    tone(n(72), beat, beat * 0.8, { type: 'square', vol: 0.06 });
-    tone(n(76), beat * 2, beat * 0.45, { type: 'square', vol: 0.06 });
-    tone(n(76), beat * 2.5, beat * 0.45, { type: 'square', vol: 0.06 });
-    tone(n(74), beat * 3, beat * 0.8, { type: 'square', vol: 0.06 });
-    tone(n(79), beat * 4, beat * 1.6, { type: 'square', vol: 0.07 });
+    tone(n(72), 0, beat * 0.8, { type: 'square', vol: 0.03 });
+    tone(n(72), beat, beat * 0.8, { type: 'square', vol: 0.03 });
+    tone(n(76), beat * 2, beat * 0.45, { type: 'square', vol: 0.03 });
+    tone(n(76), beat * 2.5, beat * 0.45, { type: 'square', vol: 0.03 });
+    tone(n(74), beat * 3, beat * 0.8, { type: 'square', vol: 0.03 });
+    tone(n(79), beat * 4, beat * 1.6, { type: 'square', vol: 0.035 });
     tone(n(76), beat * 4, beat * 1.6, { type: 'triangle', vol: 0.08 });
     tone(n(72), beat * 4, beat * 1.6, { type: 'triangle', vol: 0.08 });
     // ベース と てびょうし
@@ -105,11 +198,7 @@ window.Sound = (() => {
     }
     // うた
     hush();
-    const at = (s, fn) => setTimeout(fn, s * 1000);
-    at(0, () => say(char, { pitch: 1.6, rate: 1.1 }));
-    at(beat, () => say(char, { pitch: 1.8, rate: 1.1 }));
-    at(beat * 2, () => say(word + 'の', { pitch: 1.6, rate: 1.25 }));
-    at(beat * 4, () => say(char + '！', { pitch: 2.0, rate: 1.0 }));
+    say(`${char}、${char}、${word}の ${char}！`, { who: 'kid', pitch: 1.4 });
     return (beat * 5.5) * 1000;
   }
 
