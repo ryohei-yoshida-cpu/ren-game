@@ -75,8 +75,28 @@ window.Sound = (() => {
 
   fetch(VOICE_DIR + 'index.json')
     .then(r => r.json())
-    .then(j => { voiceIndex = j; })
+    .then(j => { voiceIndex = j; migrate(); })
     .catch(() => { /* こえが ない ときは よみあげで */ });
+
+  // まえに「なかま（みんな）」で とった うたは その キャラへ、ヒーローの なまえなどは ナレーションへ うつす（いちどだけ）
+  async function migrate() {
+    const FLAG = 'voice-migrated-2';
+    try { if (!window.VoiceBox || localStorage.getItem(FLAG)) return; } catch (e) { return; }
+    await VB.ready;
+    const meta = VB.meta();
+    for (const k of VB.keys()) {
+      if (!k.startsWith('kid|')) continue;
+      const t = k.slice(4);
+      const song = t.match(/^(.)、\1、/);
+      const to = song ? `c:${song[1]}|${t}` : voiceIndex[`narr|${t}`] && !voiceIndex[`kid|${t}`] ? `narr|${t}` : null;
+      if (!to || VB.recorded(to)) continue;
+      const b = await VB.blob(k);
+      const m = meta.get(k);
+      await VB.put(to, b, m.by, m.at);
+      await VB.remove(k);
+    }
+    try { localStorage.setItem(FLAG, '1'); } catch (e) { /* むし */ }
+  }
 
   function decode(buf) {
     const c = ac();
@@ -106,10 +126,15 @@ window.Sound = (() => {
     }
     return clips.get(id);
   }
+  // キャラ（who が 'c:い' など）の こえは、
+  //   そのキャラの ろくおん → みんな（kid）の ろくおん → VOICEVOX の じゅんに さがす
   function clipId(who, text) {
-    const k = `${who}|${text}`;
-    if (VB && VB.has(k)) return 'c:' + k;
-    const f = voiceIndex && voiceIndex[k];
+    const base = who.startsWith('c:') ? 'kid' : who;
+    for (const w of base === who ? [who] : [who, base]) {
+      const k = `${w}|${text}`;
+      if (VB && VB.has(k)) return 'c:' + k;
+    }
+    const f = voiceIndex && voiceIndex[`${base}|${text}`];
     return f ? 'v:' + f : null;
   }
   function playBuffer(buf) {
@@ -218,7 +243,7 @@ window.Sound = (() => {
     }
     // うた
     hush();
-    say(`${char}、${char}、${word}の ${char}！`, { who: 'kid', pitch: 1.4 });
+    say(`${char}、${char}、${word}の ${char}！`, { who: 'c:' + char, pitch: 1.4 });
     return (beat * 5.5) * 1000;
   }
 

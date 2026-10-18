@@ -537,6 +537,9 @@
     });
   }
 
+  // そのキャラの こえ（じぶんで とった こえが なければ みんな きょうつうの こえ）
+  const chr = a => 'c:' + a.c;
+
   // ---------- ヒーロー ----------
   // おぼえた へんしんの かず（さいしょは 1つ。だんを クリアする たびに ふえる）
   const formsUnlocked = () => Math.min(Hero.FORMS.length, 1 + save.cleared.length);
@@ -549,7 +552,7 @@
   async function transform(actor, form = currentForm()) {
     const k = Hero.costume(actor.info.word, form);
     Sound.henshin();
-    Sound.say('ヒーロー へんしん！', { who: 'kid' });
+    Sound.say('ヒーロー へんしん！', { who: chr(actor) });
     setMessage('ヒーロー へんしん！');
     board.classList.remove('flash');
     void board.offsetWidth;
@@ -565,7 +568,7 @@
     if (k.gear === 'jet') Sound.jet(); else Sound.whoosh();
     actor.say(`${k.name} さんじょう！`, 2200);
     setMessage(`${k.name} さんじょう！`);
-    Sound.say(`${k.title}|${k.word}|さんじょう！`, { who: 'kid' });
+    Sound.say(`${k.title}|${k.word}|さんじょう！`, { who: 'narr' });
     await sleep(1800);
   }
 
@@ -579,7 +582,7 @@
     actor.pose(p);
     Sound[p.sfx]();
     actor.say(p.phrase, big ? 1400 : 1000);
-    Sound.say(p.phrase, { who: 'kid' });
+    Sound.say(p.phrase, { who: chr(actor) });
     setTimeout(() => sparks(actor.x, actor.y - S / 3, big ? 10 : 6, ['✨', '⭐', '💥']), 300);
     await sleep(big ? 1500 : 1050);
     actor.unpose();
@@ -865,7 +868,7 @@
     Sound.charge();
     actor.say(f.name, 2600);
     setMessage(f.name);
-    Sound.say(f.name, { who: 'kid' });
+    Sound.say(f.name, { who: 'narr' });
     sparks(actor.x, actor.y, 8, ['⚡', '✨']);
     await sleep(1300);
     actor.el.classList.remove('charge');
@@ -932,7 +935,7 @@
     foe.remove();
     actor.mode('happy');
     actor.say('せいぎの しょうり！', 1600);
-    Sound.say('せいぎの しょうり！', { who: 'kid' });
+    Sound.say('せいぎの しょうり！', { who: chr(actor) });
     await sleep(1400);
   }
 
@@ -999,7 +1002,7 @@
     const vow = 'たいへんだ！ おひめさまを たすけに いくぞ！';
     ant.say(vow, 3000);
     setMessage(vow);
-    Sound.say(vow, { who: 'kid' });
+    Sound.say(vow, { who: chr(ant) });
     await sleep(3200);
     await crocTaunt('くやしかったら ここまで おいでー！ だもんねー！');
     ant.mode('running');
@@ -1057,7 +1060,7 @@
 
     // さいごは ありの ヒーロー
     actor.say('ありさん、たのんだ！', 1600);
-    Sound.say('ありさん、たのんだ！', { who: 'kid' });
+    Sound.say('ありさん、たのんだ！', { who: chr(actor) });
     actor.mode('running');
     const ant = new Actor('あ');
     ant.set(offscreenX(-1), y, 30);
@@ -1072,7 +1075,7 @@
     const brave = 'おひめさま、いま たすけるぞ！';
     ant.say(brave, 2400);
     setMessage(brave);
-    Sound.say(brave, { who: 'kid' });
+    Sound.say(brave, { who: chr(ant) });
     await sleep(2400);
     await transform(ant);
 
@@ -1108,7 +1111,7 @@
     ant.mode('happy');
     princess.mode('happy');
     ant.say('え、えへへ…', 1800);
-    Sound.say('えへへ', { who: 'kid' });
+    Sound.say('えへへ', { who: chr(ant) });
     await sleep(2200);
   }
 
@@ -1225,7 +1228,7 @@
     actor.mode('wiggle');
     actor.face(first.pts[j].x - first.pts[0].x);
     actor.say('まてまてー！', 1800);
-    Sound.say('まてまてー！', { who: 'kid' });
+    Sound.say('まてまてー！', { who: chr(actor) });
     setMessage('ゆびで なぞって ワニを おいかけよう！');
 
     await trace(letter, actor, croc);
@@ -1272,13 +1275,13 @@
     oldA.face(1);
     newA.face(-1);
     oldA.say('なかまに なって たすけてくれ！', 2400);
-    Sound.say('なかまに なって、たすけてくれ！', { who: 'kid' });
+    Sound.say('なかまに なって、たすけてくれ！', { who: chr(oldA) });
     await sleep(2400);
     newA.once('popin');
     newA.mode('happy');
     newA.say('わかった！', 1600);
     Sound.caught();
-    Sound.say('わかった！', { who: 'kid' });
+    Sound.say('わかった！', { who: chr(newA) });
     await sleep(1500);
 
     // こうたい
@@ -1452,7 +1455,7 @@
   function announceForm(form) {
     Sound.henshin();
     Sound.say('つよく なって あたらしい へんしんを おぼえた！', { who: 'narr' });
-    Sound.say(Hero.FORMS[form].title, { who: 'kid' });
+    Sound.say(Hero.FORMS[form].title, { who: 'narr' });
   }
 
   async function stageClear(stageIdx, order) {
@@ -1612,7 +1615,7 @@
     }
     d.querySelector('.md-ladder').innerHTML = ladder;
     d.classList.add('show');
-    if (n) Sound.say(`${WORDS[c].word}の ${c}`, { who: 'kid' });
+    if (n) Sound.say(`${WORDS[c].word}の ${c}`, { who: 'narr' });
   }
 
   async function playIntro() {
@@ -1652,7 +1655,7 @@
         writeSave();
         Sound.unlock();
         Sound.hush();
-        Sound.say(Hero.FORMS[save.form].title, { who: 'kid' });
+        Sound.say(Hero.FORMS[save.form].title, { who: 'narr' });
         renderForms();
         renderTitle();
       };

@@ -7,7 +7,7 @@
 (() => {
   'use strict';
   const $ = s => document.querySelector(s);
-  const { Sound, VoiceBox, WORDS, Hero } = window;
+  const { Sound, VoiceBox, WORDS, STAGES } = window;
   const ov = $('#overlay-studio');
   const list = $('#studio-list');
   const msg = $('#studio-msg');
@@ -20,32 +20,42 @@
     { who: 'foe', name: 'わるもの' },
   ];
   const ORIGINAL = { kid: 'ずんだもん', narr: '春日部つむぎ', hime: '四国めたん', wani: '玄野武宏', foe: '白上虎太郎' };
+  const CHARS = Object.keys(WORDS);
+  // あり だけが いう セリフ / さいごの だんの キャラだけが いう セリフ
+  const ANT_ONLY = ['えへへ', 'たいへんだ！ おひめさまを たすけに いくぞ！', 'おひめさま、いま たすけるぞ！'];
+  const LAST_ONLY = ['ありさん、たのんだ！'];
+  const LAST_CHARS = STAGES[STAGES.length - 1].chars;
 
-  let lines = [];          // { key, who, text, id, group }
+  let lines = [];          // { key, who, text, id, char }
   let tab = 'narr';
+  let charSel = 'あ';      // なかま タブで えらんで いる キャラ（'kid' は みんな）
   let request = null;      // おねがい モード: { ids:Set, from }
   const picked = new Set();
   let recording = null;    // { key, ctl, btn }
 
-  function groupOf(who, text) {
-    if (who !== 'kid') return '';
-    if (/^(.)、\1、/.test(text)) return 'うた';
-    if (Hero.lines().titles.includes(text) || text === 'さんじょう！' ||
-      Object.values(WORDS).some(w => w.word === text)) return 'ヒーローの なまえ';
-    if (/^\S+の .$/.test(text)) return 'メダルの せつめい';
-    return 'セリフ';
-  }
-
+  // セリフの いちらん。なかまの セリフは キャラごと（'c:い|...'）と みんな きょうつう（'kid|...'）
   async function loadLines() {
     if (lines.length) return;
     let idx = Sound.voiceIndex();
     if (!idx) idx = await (await fetch('audio/voice/index.json')).json();
-    lines = Object.entries(idx).filter(([k]) => k !== '_v').map(([key, file]) => {
+    const all = Object.entries(idx).filter(([k]) => k !== '_v').map(([key, file]) => {
       const i = key.indexOf('|');
-      const who = key.slice(0, i), text = key.slice(i + 1);
-      return { key, who, text, id: file.replace(/\.mp3$/, ''), group: groupOf(who, text) };
+      return { key, who: key.slice(0, i), text: key.slice(i + 1), id: file.replace(/\.mp3$/, '') };
+    });
+    const isSong = t => /^(.)、\1、/.test(t);
+    const common = all.filter(l => l.who === 'kid' && !isSong(l.text));
+    lines = all.filter(l => l.who !== 'kid');
+    // みんな（ここで とると ぜんぶの キャラが この こえに なる）
+    common.filter(l => !ANT_ONLY.includes(l.text)).forEach(l => lines.push({ ...l, char: 'kid' }));
+    CHARS.forEach((c, ci) => {
+      const song = all.find(l => l.who === 'kid' && isSong(l.text) && l.text.startsWith(c + '、'));
+      const mine = [song, ...common.filter(l =>
+        (!ANT_ONLY.includes(l.text) || c === 'あ') && (!LAST_ONLY.includes(l.text) || LAST_CHARS.includes(c)))];
+      mine.filter(Boolean).forEach(l => lines.push({ key: `c:${c}|${l.text}`, who: `c:${c}`, text: l.text, id: `${l.id}-${ci}`, char: c }));
     });
   }
+  const roleOf = l => (l.char ? 'kid' : l.who);
+  const charLabel = c => (c === 'kid' ? '👥 みんな' : `${WORDS[c].emoji} ${c}（${WORDS[c].word}）`);
 
   function myName() {
     return $('#studio-name').value.trim();
@@ -61,12 +71,29 @@
   function visible() {
     if (request) return lines.filter(l => request.ids.has(l.id));
     const q = $('#studio-search').value.trim();
-    return lines.filter(l => (q ? l.text.includes(q) : l.who === tab));
+    if (q) return lines.filter(l => l.text.includes(q));
+    if (tab === 'kid') return lines.filter(l => l.char === charSel);
+    return lines.filter(l => l.who === tab);
+  }
+
+  // なかま タブ: キャラを えらぶ
+  function renderChars() {
+    const box = $('#studio-chars');
+    box.hidden = !!request || tab !== 'kid' || !!$('#studio-search').value.trim();
+    if (box.hidden) return;
+    box.innerHTML = ['kid', ...CHARS].map(c => {
+      const n = lines.filter(l => l.char === c && VoiceBox.recorded(l.key)).length;
+      return `<button class="schar${c === charSel ? ' on' : ''}${n ? ' has' : ''}" data-char="${c}">` +
+        (c === 'kid' ? '👥<small>みんな</small>' : `${WORDS[c].emoji}<small>${c}</small>`) + '</button>';
+    }).join('');
+    box.querySelectorAll('.schar').forEach(b => {
+      b.onclick = () => { charSel = b.dataset.char; render(); };
+    });
   }
 
   function renderTabs() {
     $('#studio-tabs').innerHTML = ROLES.map(r => {
-      const all = lines.filter(l => l.who === r.who);
+      const all = lines.filter(l => roleOf(l) === r.who);
       const mine = all.filter(l => VoiceBox.recorded(l.key)).length;
       return `<button class="stab${r.who === tab ? ' on' : ''}" data-who="${r.who}">${r.name}<small>${mine}/${all.length}</small></button>`;
     }).join('');
@@ -77,7 +104,9 @@
 
   function rowHTML(l) {
     const mine = VoiceBox.recorded(l.key);
-    const who = mine ? `🎙 ${VoiceBox.by(l.key) || 'じぶん'} の こえ` : `もとの こえ（${ORIGINAL[l.who]}）`;
+    let who = mine ? `🎙 ${VoiceBox.by(l.key) || 'じぶん'} の こえ` : `もとの こえ（${ORIGINAL[roleOf(l)]}）`;
+    if (l.char && !mine && l.char !== 'kid' && VoiceBox.recorded(`kid|${l.text}`)) who = `👥 みんなの こえ（${VoiceBox.by(`kid|${l.text}`)}）`;
+    if (l.char && (request || $('#studio-search').value.trim())) who = `${charLabel(l.char)} ・ ${who}`;
     return `<div class="srow${mine ? ' mine' : ''}" data-key="${encodeURIComponent(l.key)}">` +
       (request ? '' : `<input type="checkbox" class="sr-pick" aria-label="えらぶ"${picked.has(l.key) ? ' checked' : ''}>`) +
       `<div class="sr-text">${l.text.replace(/</g, '&lt;')}<small>${who}</small></div>` +
@@ -88,18 +117,17 @@
 
   function render() {
     renderTabs();
+    renderChars();
     $('#studio-tabs').hidden = !!request;
     $('#studio-search').hidden = !!request;
     $('#studio-ask').hidden = !!request;
     const rows = visible();
-    let html = '', group = null;
-    for (const l of rows) {
-      if (l.group && l.group !== group) {
-        group = l.group;
-        html += `<div class="sgroup">${group}</div>`;
-      }
-      html += rowHTML(l);
+    let html = '';
+    if (!request && tab === 'kid' && !$('#studio-search').value.trim()) {
+      html += `<div class="sgroup">${charLabel(charSel)} の セリフ` +
+        (charSel === 'kid' ? '<small>（ここで とると、じぶんの こえが ない キャラは みんな この こえに なるよ）</small>' : '') + '</div>';
     }
+    for (const l of rows) html += rowHTML(l);
     list.innerHTML = html || '<p class="sempty">セリフが ないよ</p>';
     if (request) {
       const done = rows.filter(l => VoiceBox.recorded(l.key)).length;
@@ -143,7 +171,7 @@
       await VoiceBox.put(r.key, wav, myName() || 'じぶん');
       say('とれたよ！');
       const l = lines.find(x => x.key === r.key);
-      Sound.say(l.text, { who: l.who });
+      Sound.say(l.text, { who: l.who });   // キャラの セリフは who が 'c:い' など
     } catch (e) {
       say(e.message === 'quiet' ? 'こえが きこえなかったよ。もういちど やってみてね' : 'うまく とれなかったよ。もういちど やってみてね');
     }
@@ -271,6 +299,6 @@
   $('#btn-studio').onclick = () => { Sound.unlock(); open(); };
 
   // おねがいの リンクから ひらいた とき
-  const m = location.hash.match(/^#koe=([\w.]+)(?:&from=([^&]*))?/);
+  const m = location.hash.match(/^#koe=([\w.-]+)(?:&from=([^&]*))?/);
   if (m) open({ ids: new Set(m[1].split('.')), from: decodeURIComponent(m[2] || '') });
 })();

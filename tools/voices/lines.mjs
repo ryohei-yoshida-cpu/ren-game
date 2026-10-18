@@ -19,33 +19,34 @@ const lines = [];
 const add = (who, text) => lines.push({ who, text: text.trim() });
 
 // game.js に そのまま かいてある セリフ
-for (const m of game.matchAll(/Sound\.say\('([^']+)',\s*\{\s*who:\s*'(\w+)'/g)) add(m[2], m[1]);
+// キャラごとの セリフ（who: chr(...)）の もとの こえは みんな きょうつう（kid）
+for (const m of game.matchAll(/Sound\.say\('([^']+)',\s*\{\s*who:\s*(?:'(\w+)'|chr\()/g)) add(m[2] || 'kid', m[1]);
 for (const m of game.matchAll(/crocTaunt\('([^']+)'\)/g)) add('wani', m[1]);
 const arr = name => vm.runInNewContext(game.match(new RegExp(`const ${name} = (\\[[\\s\\S]*?\\]);`))[1]);
 arr('FLEE').forEach(t => add('wani', t));
 arr('ARRIVE').forEach(t => add('wani', t));
 const constLine = (name, who) => add(who, game.match(new RegExp(`const ${name} = '([^']+)';`))[1]);
 constLine('line', 'wani');
-constLine('vow', 'kid');
+constLine('vow', 'kid');   // あり
 constLine('rage', 'wani');
 constLine('brave', 'kid');
 constLine('thanks', 'hime');
-for (const m of game.matchAll(/name: '(ひっさつ[^']+)'/g)) add('kid', m[1]);
+for (const m of game.matchAll(/name: '(ひっさつ[^']+)'/g)) add('narr', m[1]);
 add('foe', 'やられた〜！');
 add('wani', 'おぼえてろ〜！');
 
 // データから つくる セリフ
 for (const [c, w] of Object.entries(WORDS)) {
   add('kid', `${c}、${c}、${w.word}の ${c}！`);   // うた（Sound.sing）
-  add('kid', `${w.word}の ${c}`);                 // メダルの せつめい
-  add('kid', w.word);                             // ヒーローの なまえ
+  add('narr', `${w.word}の ${c}`);                // メダルの せつめい
+  add('narr', w.word);                            // ヒーローの なまえ
 }
 for (let n = 1; n <= Medal.MAX + 1; n++) add('narr', Medal.message(n));
 const h = Hero.lines();
-h.titles.forEach(t => add('kid', t));
-add('kid', 'さんじょう！');
+h.titles.forEach(t => add('narr', t));
+add('narr', 'さんじょう！');
 h.poses.forEach(t => add('kid', t));
-h.finishers.forEach(t => add('kid', t));
+h.finishers.forEach(t => add('narr', t));
 for (const e of h.enemies) {
   add('foe', e.cry);
   add('narr', `あっ！ ${e.name} が でてきた！`);
