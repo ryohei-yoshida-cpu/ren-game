@@ -5,7 +5,7 @@
   const SAVE_KEY = 'hiragana-oikakekko-v1';
   const SVGNS = 'http://www.w3.org/2000/svg';
   const $ = s => document.querySelector(s);
-  const { WORDS, STAGES, STROKES, Sound, Hero, Medal } = window;
+  const { WORDS, STAGES, STROKES, Sound, Hero, Medal, BOSS_STAGES } = window;
   const HERO_SPEED = 1.3;
   const PACE = 1.6;   // うごきの ゆっくりさ（おおきいほど のろのろ）
 
@@ -16,7 +16,12 @@
   function loadSave() {
     try {
       const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-      if (s && typeof s === 'object') return Object.assign(defaultSave(), s);
+      if (s && typeof s === 'object') {
+        const out = Object.assign(defaultSave(), s);
+        // つづきの ぼうけんが ふえる まえに「わ」を クリアしていた ひとも「が」から あそべるように
+        out.cleared.forEach(i => { out.unlocked = Math.max(out.unlocked, Math.min(i + 1, STAGES.length - 1)); });
+        return out;
+      }
     } catch (e) { /* つかえない ときは あたらしく */ }
     return defaultSave();
   }
@@ -81,7 +86,7 @@
       el.className = 'actor';
       el.innerHTML =
         `<div class="body"><div class="rig"><span class="emoji">${this.info.emoji}</span></div></div>` +
-        (c ? `<span class="badge">${c}</span>` : '') + `<div class="bubble"></div>`;
+        (c ? `<span class="badge${c.length > 1 ? ' two' : ''}">${c}</span>` : '') + `<div class="bubble"></div>`;
       $('#actors').appendChild(el);
       this.el = el;
       this.body = el.querySelector('.body');
@@ -603,6 +608,28 @@
     'きょうは ちょうしが わるい だけだもんねー！',
     'つぎは いよいよ ワニさまの おしろだもんねー！ こわいぞー！',
   ];
+  // つづきの ぼうけん（だくおん・ようおん…）で ワニが いう セリフ
+  const FLEE2 = [
+    'にごった おとでも まけないもんねー！ にげるもんねー！',
+    'てんてんが ついても へっちゃら だもんねー！',
+    'まるが ついても まけないもんねー！ さらばー！',
+    'ちいさい ゃゅょ なんか こわくないもんねー！',
+    'うぐぐ… つぎの おしろへ ひっこし だもんねー！',
+    'まだまだ こぶんは いっぱい いるもんねー！',
+  ];
+  const ARRIVE2 = [
+    'ワニさま ふっかつ だもんねー！ また おひめさまを さらって きたもんねー！',
+    'こんどは てんてんの おしろ だもんねー！',
+    'にごった おとは むずかしいもんねー！',
+    'まるが ついた おとは ぱぴぷぺぽ だもんねー！',
+    'ちいさい ゃゅょ の おしろ だもんねー！ よめるかなー？',
+    'ふっふっふ、ここまで これるかなー？',
+  ];
+  const BOSS_ARRIVE2 = 'ここが さいごの ワニさまの おしろ だもんねー！ ちいさい っ で かかってこい！';
+  const arriveLine = i => (i < 10 ? ARRIVE[i] : BOSS_STAGES.includes(i) ? BOSS_ARRIVE2
+    : i === 10 ? ARRIVE2[0] : ARRIVE2[1 + (i - 11) % (ARRIVE2.length - 1)]);
+  const fleeLine = i => (i < 10 ? FLEE[i % FLEE.length] : FLEE2[(i - 10) % FLEE2.length]);
+
   const ARRIVE = [
     'くやしかったら ここまで おいでー！ だもんねー！',
     'こんどの おしろは ちょっと おおきいもんねー！',
@@ -621,7 +648,7 @@
     // その だんの おしろに する（あとの だんほど おおきい）
     render(stage) {
       this.stage = stage;
-      const last = stage === STAGES.length - 1;
+      const last = BOSS_STAGES.includes(stage);
       this.el.classList.remove('broken', 'exploded', 'shake');
       this.el.classList.toggle('boss-castle', last);
       this.el.querySelector('.castle-emoji').textContent = last ? '🏯' : '🏰';
@@ -634,7 +661,9 @@
       const u = VB / b.width;
       const above = (b.top - wrap.top) * u;
       const right = (wrap.right - b.right) * u;
-      const t = this.stage / (STAGES.length - 1);
+      // おはなし ごとに だんだん おおきく（つづきの ぼうけんは もう いちど ちいさい おしろから）
+      const ch2 = this.stage >= 10;
+      const t = ch2 ? (this.stage - 10) / (STAGES.length - 11) : this.stage / 9;
       if (above >= 18) {
         const max = Math.min(above * 0.95, 36);
         this.size = 13 + (max - 13) * t;
@@ -796,7 +825,7 @@
     croc.set(castle.x, castle.y, croc.size);
     croc.face(-1);
     croc.once('popin');
-    const text = FLEE[ctx.stageIdx % FLEE.length];
+    const text = fleeLine(ctx.stageIdx);
     croc.say(text, 3200, { below: true });
     setMessage(text);
     Sound.say(text, { who: 'wani' });
@@ -1115,18 +1144,24 @@
     await sleep(2200);
   }
 
-  function showEnding(learned = -1) {
+  function showEnding(learned = -1, stageIdx = BOSS_STAGES[0]) {
     save.ending = (save.ending || 0) + 1;
     if (learned >= 0) save.form = null;
     writeSave();
     const ov = $('#overlay-ending');
+    const ch2 = stageIdx >= 10;
+    ov.querySelector('.ending-text').innerHTML = ch2
+      ? 'だくおん・はんだくおん・ようおん・そくおんも<br>ぜんぶ クリア！ ひらがな はかせだ！'
+      : 'ひらがな 50おん クリア！<br>つづきの ぼうけん「が」の だんが ひらいたよ！';
+    const chars = STAGES.filter(st => (st.chapter === 2) === ch2).flatMap(st => st.chars);
     ov.querySelector('.new-form').innerHTML = learned >= 0 ? newFormHTML(learned) : '';
     if (learned >= 0) setTimeout(() => announceForm(learned), 4500);
-    ov.querySelector('.ending-parade').innerHTML = Object.values(WORDS).map(w => `<span>${w.emoji}</span>`).join('');
+    ov.querySelector('.ending-parade').innerHTML = chars.map(c => `<span>${WORDS[c].emoji}</span>`).join('');
     confetti(ov.querySelector('.confetti'));
     showOverlay('#overlay-ending', true);
     Sound.fanfare();
-    setTimeout(() => Sound.say('おひめさまを たすけたよ！ ひらがな ぜんぶ クリア！ おめでとう！', { who: 'narr' }), 1000);
+    setTimeout(() => Sound.say(ch2 ? 'おひめさまを また たすけたよ！ ぜんぶの ひらがな クリア！ おめでとう！'
+      : 'おひめさまを たすけたよ！ ひらがな 50おん クリア！ おめでとう！', { who: 'narr' }), 1000);
   }
 
   // ---------- メダル ゲット ----------
@@ -1380,11 +1415,11 @@
     renderProgress(order, 0);
 
     // さいごの だん（わ）は ワニの おしろ → ボスせん
-    const ctx = { stageIdx, finaleDue: stageIdx === STAGES.length - 1 };
+    const ctx = { stageIdx, finaleDue: BOSS_STAGES.includes(stageIdx) };
 
     try {
       if (stageIdx === 0 && !save.introSeen) await intro();
-      else await crocTaunt(ARRIVE[stageIdx]);
+      else await crocTaunt(arriveLine(stageIdx));
       let actor = new Actor(order[0]);
       actor.set(VB / 2, VB / 2, 34);
       actor.once('popin');
@@ -1401,7 +1436,7 @@
         markStageCleared(stageIdx);
         const learned = formsUnlocked() > before ? formsUnlocked() - 1 : -1;
         await finale(actor);
-        if (my === epoch) showEnding(learned);
+        if (my === epoch) showEnding(learned, stageIdx);
         return;
       }
       if (my === epoch) stageClear(stageIdx, order);
@@ -1538,8 +1573,11 @@
     map.innerHTML = '';
     const nx = nextStageIdx();
     STAGES.forEach((st, i) => {
+      if (st.chapter === 2 && !(STAGES[i - 1] || {}).chapter) {
+        map.insertAdjacentHTML('beforeend', '<div class="map-chapter">🌟 つづきの ぼうけん<small>だくおん・はんだくおん・ようおん・そくおん</small></div>');
+      }
       const b = document.createElement('button');
-      b.className = 'stage-btn';
+      b.className = 'stage-btn' + (st.name.length > 1 ? ' two' : '');
       b.style.background = st.color;
       b.textContent = st.name;
       b.setAttribute('aria-label', `${st.name} の だん`);
@@ -1553,11 +1591,19 @@
       }
       map.appendChild(b);
     });
-    const d = save.cleared.length;
-    $('#castle-status').innerHTML = save.ending
-      ? '👑 おひめさまを たすけた！ <small>（もういちど あそべるよ）</small>'
-      : `こわした おしろ <span class="cs-bars">${'🏚️'.repeat(d)}<i>${'🏰'.repeat(Math.max(0, STAGES.length - 1 - d))}</i>${d < STAGES.length ? '🏯' : ''}</span>`;
-    $('#title-scene').classList.toggle('saved', !!save.ending);
+    // おしろの ようす（おはなし 1: あ〜わ / つづき: が〜っ）
+    const done = i => save.cleared.includes(i);
+    const ch1 = STAGES.map((_, i) => i).filter(i => i < 10);
+    const ch2 = STAGES.map((_, i) => i).filter(i => i >= 10);
+    const bars = list => list.map(i => (done(i) ? '🏚️' : BOSS_STAGES.includes(i) ? '🏯' : '🏰')).join('');
+    const rescued = done(STAGES.length - 1) ? 2 : done(BOSS_STAGES[0]) ? 1 : 0;
+    $('#castle-status').innerHTML = rescued === 2
+      ? '👑 おひめさまを 2かい たすけた！ <small>（もういちど あそべるよ）</small>'
+      : rescued === 1
+        ? `🌟 つづきの ぼうけん こわした おしろ <span class="cs-bars">${ch2.filter(done).length}/${ch2.length}</span>`
+        : `こわした おしろ <span class="cs-bars">${bars(ch1)}</span>`;
+    // おひめさまを たすけたら タイトルは ハッピー（つづきで また さらわれたら ワニが もどってくる）
+    $('#title-scene').classList.toggle('saved', rescued === 2 || (rescued === 1 && !ch2.some(done)));
     $('#btn-forms').textContent = `🦸 へんしん ${formsUnlocked()}/${Hero.FORMS.length}`;
     $('#zukan-count').textContent = `${Object.keys(save.caught).length}/${Object.keys(WORDS).length}`;
   }

@@ -789,3 +789,10 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .imp-skip { color: #7d8a99; }
 .imp-play { flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; border: none; background: #fff; box-shadow: 0 2px 0 rgba(74, 52, 38, .15); }
 #imp-ok:disabled { opacity: .4; }
+
+/* つづきの ぼうけん（2もじの だん・キャラ） */
+.map-chapter { grid-column: 1 / -1; text-align: center; font-weight: 900; font-size: 17px; color: #6c5ce7; margin-top: 6px; }
+.map-chapter small { display: block; font-size: 12px; opacity: .7; }
+.stage-btn.two { font-size: clamp(18px, 5.4vw, 28px); letter-spacing: -1px; }
+.medal-char.two { font-size: 24px; letter-spacing: -1px; }
+.actor .badge.two { width: 52%; font-size: .22em; letter-spacing: -.05em; }

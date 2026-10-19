@@ -243,7 +243,7 @@ window.Sound = (() => {
     }
     // うた
     hush();
-    say(`${char}、${char}、${word}の ${char}！`, { who: 'c:' + char, pitch: 1.4 });
+    say(window.songText(char), { who: 'c:' + char, pitch: 1.4 });
     return (beat * 5.5) * 1000;
   }
 

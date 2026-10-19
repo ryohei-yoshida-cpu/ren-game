@@ -21,7 +21,7 @@ window.Medal = (() => {
     if (!s) {
       return `<svg class="medal empty ${cls}" viewBox="0 0 100 124">` +
         `<circle cx="50" cy="80" r="38" fill="#efe5d2" stroke="#d6c6a8" stroke-width="3" stroke-dasharray="6 5"/>` +
-        `<text x="50" y="81" class="medal-char" fill="#cdbb9b">${c}</text></svg>`;
+        `<text x="50" y="81" class="medal-char${c.length > 1 ? ' two' : ''}" fill="#cdbb9b">${c}</text></svg>`;
     }
     const [L, R, F] = STEPS[s];
     const sparkle = s === MAX
@@ -34,7 +34,7 @@ window.Medal = (() => {
       `<path d="M50 46 A34 34 0 0 1 50 114 Z" fill="url(#md-${R})"/>` +
       `<circle cx="50" cy="80" r="34" fill="none" stroke="rgba(0,0,0,.15)" stroke-width="1.2"/>` +
       `<circle cx="50" cy="80" r="27" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/>` +
-      `<text x="50" y="81" class="medal-char">${c}</text>${sparkle}</svg>`;
+      `<text x="50" y="81" class="medal-char${c.length > 1 ? ' two' : ''}">${c}</text>${sparkle}</svg>`;
   }
 
   function message(n) {

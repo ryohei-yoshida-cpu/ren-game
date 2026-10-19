@@ -7,7 +7,7 @@
 (() => {
   'use strict';
   const $ = s => document.querySelector(s);
-  const { Sound, VoiceBox, WORDS, STAGES } = window;
+  const { Sound, VoiceBox, WORDS, STAGES, BOSS_STAGES, songText } = window;
   const ov = $('#overlay-studio');
   const list = $('#studio-list');
   const msg = $('#studio-msg');
@@ -24,7 +24,9 @@
   // あり だけが いう セリフ / さいごの だんの キャラだけが いう セリフ
   const ANT_ONLY = ['えへへ', 'たいへんだ！ おひめさまを たすけに いくぞ！', 'おひめさま、いま たすけるぞ！'];
   const LAST_ONLY = ['ありさん、たのんだ！'];
-  const LAST_CHARS = STAGES[STAGES.length - 1].chars;
+  const LAST_CHARS = BOSS_STAGES.flatMap(i => STAGES[i].chars);
+  const SONGS = new Set(Object.keys(WORDS).map(songText));
+  const isSong = t => SONGS.has(t);
 
   let lines = [];          // { key, who, text, id, char }
   let tab = 'narr';
@@ -42,13 +44,12 @@
       const i = key.indexOf('|');
       return { key, who: key.slice(0, i), text: key.slice(i + 1), id: file.replace(/\.mp3$/, '') };
     });
-    const isSong = t => /^(.)、\1、/.test(t);
     const common = all.filter(l => l.who === 'kid' && !isSong(l.text));
     lines = all.filter(l => l.who !== 'kid');
     // みんな（ここで とると ぜんぶの キャラが この こえに なる）
     common.filter(l => !ANT_ONLY.includes(l.text)).forEach(l => lines.push({ ...l, char: 'kid' }));
     CHARS.forEach((c, ci) => {
-      const song = all.find(l => l.who === 'kid' && isSong(l.text) && l.text.startsWith(c + '、'));
+      const song = all.find(l => l.who === 'kid' && l.text === songText(c));
       const mine = [song, ...common.filter(l =>
         (!ANT_ONLY.includes(l.text) || c === 'あ') && (!LAST_ONLY.includes(l.text) || LAST_CHARS.includes(c)))];
       mine.filter(Boolean).forEach(l => lines.push({ key: `c:${c}|${l.text}`, who: `c:${c}`, text: l.text, id: `${l.id}-${ci}`, char: c }));
@@ -254,7 +255,6 @@
   let pack = null;   // { by, groups: [{ from, target, items: [{ key, text, blob, song, on }] }] }
   const groupLabel = from => (from.startsWith('c:') ? charLabel(from.slice(2))
     : from === 'kid' ? charLabel('kid') : (ROLES.find(r => r.who === from) || { name: from }).name);
-  const isSong = t => /^(.)、\1、/.test(t);
   // いれる さきの セリフの キー（うたは その キャラ だけ）
   function targetKey(g, it) {
     if (g.target === g.from) return it.key;

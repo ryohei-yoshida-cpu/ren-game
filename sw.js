@@ -2,7 +2,7 @@
 // インターネットに つながっている ときは かならず さいしんの ファイルを つかう（ネットワーク ゆうせん）。
 // ほぞんした ファイルは オフラインの ときだけ つかうので、ふるい ファイルと あたらしい ファイルが まざらない。
 // ほぞんする ファイルの しゅるいを かえたら VERSION を あげる
-const VERSION = 'v8';
+const VERSION = 'v9';
 const APP = 'app-' + VERSION;
 const FONTS = 'fonts-v1';
 const FILES = [
