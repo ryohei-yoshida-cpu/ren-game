@@ -796,3 +796,6 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .stage-btn.two { font-size: clamp(18px, 5.4vw, 28px); letter-spacing: -1px; }
 .medal-char.two { font-size: 24px; letter-spacing: -1px; }
 .actor .badge.two { width: 52%; font-size: .22em; letter-spacing: -.05em; }
+
+/* ながおしで メニューや もじの せんたくが でないように */
+.btn-hero, .form-picker button { touch-action: manipulation; -webkit-touch-callout: none; user-select: none; }

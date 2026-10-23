@@ -421,9 +421,14 @@
         picker.hidden = false;
         setMessage('どの へんしんに する？');
       }
+      // えらぶのは、えらぶ がめんが でた あとに あらためて さわった ボタンだけ
+      // （へんしんボタンを おした ゆびを はなした ときに、したに でた いろを かってに えらばない）
+      let armed = null;
+      picker.onpointerdown = e => { armed = e.target.closest('button'); };
       picker.onclick = e => {
         const chip = e.target.closest('button');
-        if (!chip) return;
+        if (!chip || chip !== armed) return;
+        armed = null;
         picker.hidden = true;
         if (chip.classList.contains('fp-close')) {
           btn.hidden = false;
@@ -456,7 +461,7 @@
       if (!actor.costume) {
         placeDock();
         btn.hidden = false;
-        btn.addEventListener('pointerdown', onHenshin);
+        btn.addEventListener('click', onHenshin);   // ゆびを はなしてから ひらく
         setMessage('なぞってね！');
       }
 
@@ -521,7 +526,7 @@
         cancelAnimationFrame(raf);
         btn.hidden = true;
         picker.hidden = true;
-        btn.removeEventListener('pointerdown', onHenshin);
+        btn.removeEventListener('click', onHenshin);
         board.removeEventListener('pointerdown', onDown);
         board.removeEventListener('pointermove', onMove);
         board.removeEventListener('pointerup', onUp);
