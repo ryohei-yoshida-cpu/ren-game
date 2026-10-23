@@ -16,6 +16,7 @@ window.Cloud = (() => {
   try { id = localStorage.getItem(ID_KEY) || ''; } catch (e) { /* むし */ }
   let game = null;
   let busy = null;
+  let choosing = null;   // えらぶ がめんを だしている あいだは じどうで まぜない
   let state = { ok: null, at: 0, msg: '' };
 
   // ---- Firestore REST ----
@@ -135,13 +136,80 @@ window.Cloud = (() => {
     }
   }
 
+  // ---- えらんで どうき（うけいれる／こうしんする）----
+  async function peek() {
+    const doc = await req('GET', acct());
+    const save = doc && doc.fields && val(doc.fields.save) ? JSON.parse(val(doc.fields.save)) : null;
+    if (VB) await VB.ready;
+    return { save, voices: VB ? await listVoices() : new Map() };
+  }
+  async function getVoice(r) {
+    const d = await req('GET', `${acct()}/voices/${r.doc}`);
+    const b64 = d && d.fields && val(d.fields.data);
+    return b64 ? new Blob([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], { type: 'audio/wav' }) : null;
+  }
+  // ⬇️ ウェブの データを この スマホに いれる（この スマホだけの ものは きえる）
+  async function pull(remote) {
+    if (remote.save) game.set(remote.save);
+    if (!VB) return;
+    const now = Date.now();
+    for (const [k, m] of VB.meta()) {
+      const r = remote.voices.get(k);
+      if (!r || r.deleted) await VB.remove(k, now);
+      else if (r.at !== m.at) {
+        const b = await getVoice(r);
+        if (b) await VB.put(k, b, r.by, r.at);
+      }
+    }
+    const local = VB.meta();
+    for (const [k, r] of remote.voices) {
+      if (r.deleted || local.has(k)) continue;
+      const b = await getVoice(r);
+      if (b) await VB.put(k, b, r.by, r.at);
+    }
+  }
+  // ⬆️ この スマホの データで ウェブを うわがき（ほかの スマホも つぎの どうきで これに なる）
+  async function push(remote) {
+    const now = Date.now();
+    // resetAt を あたらしく すると、ほかの スマホは たしざん せずに これを うけとる
+    const save = { ...game.get(), resetAt: now };
+    game.set(save);
+    await req('PATCH', acct(), { fields: { save: S(JSON.stringify(save)), updated: I(now) } });
+    if (!VB) return;
+    const local = VB.meta();
+    for (const [k, m] of local) {
+      const r = remote.voices.get(k);
+      const b = await VB.blob(k);
+      if (!b) continue;
+      if (r && !r.deleted && r.at === m.at) {
+        // おなじ こえは じかんだけ あたらしく
+        await req('PATCH', `${acct()}/voices/${r.doc}`, { fields: { at: I(now) } }, '&updateMask.fieldPaths=at');
+      } else {
+        await req('PATCH', `${acct()}/voices/${await docId(k)}`, {
+          fields: { key: S(k), by: S(m.by || ''), at: I(now), deleted: B(false), data: { bytesValue: await toBase64(b) } },
+        });
+      }
+      await VB.put(k, b, m.by, now);
+    }
+    for (const [k, r] of remote.voices) {
+      if (r.deleted || local.has(k)) continue;
+      await req('PATCH', `${acct()}/voices/${r.doc}`, { fields: { key: S(k), by: S(''), at: I(now), deleted: B(true) } });
+    }
+  }
+  function summary(save, voices) {
+    if (!save) return 'まだ なにも ない';
+    const medals = Object.values(save.caught || {}).filter(n => n > 0).length;
+    return `${(save.cleared || []).length}だん クリア・メダル ${medals}こ・こえ ${voices}こ`;
+  }
+  const hasData = (save, voices) => !!save && ((save.cleared || []).length > 0 || Object.keys(save.caught || {}).length > 0 || voices > 0);
+
   // ---- どうき ----
   function setState(ok, msg) {
     state = { ok, at: ok ? Date.now() : state.at, msg };
     renderStatus();
   }
   function sync({ save = true, voices = true } = {}) {
-    if (!configured || !id || !game) return Promise.resolve();
+    if (!configured || !id || !game || choosing) return Promise.resolve();
     if (busy) {
       busy.again = { save: busy.again.save || save, voices: busy.again.voices || voices };
       return busy.p;
@@ -156,6 +224,26 @@ window.Cloud = (() => {
         setState(true, '');
       } catch (e) {
         setState(false, navigator.onLine === false ? 'オフラインです。つながったら どうきするよ' : 'どうき できなかったよ');
+      } finally {
+        busy = null;
+        if (run.again.save || run.again.voices) sync(run.again);
+      }
+    })();
+    return run.p;
+  }
+  // いま うごいている どうきが おわってから、えらんだ ほうで どうき
+  async function force(mode, remote) {
+    while (busy) await busy.p;
+    const run = { again: { save: false, voices: false } };
+    busy = run;
+    setState(null, 'どうきちゅう…');
+    run.p = (async () => {
+      try {
+        const r = remote || await peek();
+        await (mode === 'pull' ? pull(r) : push(r));
+        setState(true, '');
+      } catch (e) {
+        setState(false, navigator.onLine === false ? 'オフラインです。つながってから もういちど えらんでね' : 'どうき できなかったよ');
       } finally {
         busy = null;
         if (run.again.save || run.again.voices) sync(run.again);
@@ -182,10 +270,11 @@ window.Cloud = (() => {
   async function connect(newId) {
     id = newId;
     try { localStorage.setItem(ID_KEY, id); } catch (e) { /* むし */ }
-    await sync();
+    await ask(true);
   }
   function disconnect() {
     id = '';
+    choosing = null;
     try { localStorage.removeItem(ID_KEY); } catch (e) { /* むし */ }
     setState(null, '');
   }
@@ -204,6 +293,8 @@ window.Cloud = (() => {
     $('#cloud-form').hidden = !configured || !!id;
     $('#cloud-linked').hidden = !configured || !id;
     $('#cloud-id-now').textContent = id;
+    $('#cloud-choice').hidden = !choosing;
+    $('#cloud-btns-linked').hidden = !!choosing;
     $('#cloud-state').textContent = state.ok === null && state.msg ? state.msg
       : state.ok === false ? `⚠️ ${state.msg}`
         : state.at ? `✅ ${ago(state.at)} どうき しました` : '';
@@ -218,13 +309,57 @@ window.Cloud = (() => {
     say('');
     await connect(v);
     renderStatus();
-    if (state.ok) say('つながったよ！ ほかの スマホでも この ID を いれてね');
   }
+
+  // どっちの データに するか きく（first: つないだ ときは、かたほうに しか ない なら きかずに まぜる）
+  async function ask(first) {
+    say('ウェブの データを みています…');
+    let remote;
+    try {
+      remote = await peek();
+    } catch (e) {
+      say('');
+      setState(false, navigator.onLine === false ? 'オフラインです。つながったら どうきするよ' : 'ウェブの データが みられなかったよ');
+      return;
+    }
+    const localSave = game.get();
+    const localN = VB ? VB.meta().size : 0;
+    const remoteN = [...remote.voices.values()].filter(r => !r.deleted).length;
+    const a = summary(localSave, localN);
+    const b = summary(remote.save, remoteN);
+    if (first && (!hasData(localSave, localN) || !hasData(remote.save, remoteN) || a === b)) {
+      say('');
+      await sync();
+      if (state.ok) say('つながったよ！ ほかの スマホでも この ID を いれてね');
+      return;
+    }
+    choosing = { remote };
+    $('#cloud-here').textContent = a;
+    $('#cloud-web').textContent = b;
+    say(first ? 'この ID には もう データが あるよ。どう する？' : 'どう どうき する？');
+    renderStatus();
+  }
+  async function choose(mode) {
+    const c = choosing;
+    if (!c) return;
+    if (mode === 'pull' && !confirm('この スマホの データを、ウェブの データに おきかえますか？\n（この スマホだけで すすめた ぶんは きえます）')) return;
+    if (mode === 'push' && !confirm('ウェブの データを、この スマホの データで うわがき しますか？\n（ほかの スマホも つぎの どうきで この スマホと おなじに なります）')) return;
+    choosing = null;
+    renderStatus();
+    say('');
+    if (mode === 'merge') await sync();
+    else await force(mode, c.remote);
+    if (state.ok) say({ merge: 'まぜて どうき したよ', pull: 'ウェブの データを うけいれたよ', push: 'ウェブの データを こうしん したよ' }[mode]);
+  }
+  $('#cloud-merge').onclick = () => choose('merge');
+  $('#cloud-pull').onclick = () => choose('pull');
+  $('#cloud-push').onclick = () => choose('push');
+  $('#cloud-cancel').onclick = () => { choosing = null; say(''); renderStatus(); };
 
   $('#cloud-new').onclick = () => { $('#cloud-id').value = makeId(); say('あたらしい ID を つくったよ。メモして おいてね'); };
   $('#cloud-connect').onclick = onConnect;
   $('#cloud-id').addEventListener('keydown', e => { if (e.key === 'Enter') onConnect(); });
-  $('#cloud-sync').onclick = () => sync().then(() => say(state.ok ? 'どうき したよ' : ''));
+  $('#cloud-sync').onclick = () => ask(false);
   $('#cloud-copy').onclick = async () => {
     try { await navigator.clipboard.writeText(id); say('ID を コピーしたよ'); } catch (e) { say(id); }
   };
@@ -235,7 +370,10 @@ window.Cloud = (() => {
       renderStatus();
     }
   };
-  $('#cloud-close').onclick = () => ov.classList.remove('show');
+  $('#cloud-close').onclick = () => {
+    ov.classList.remove('show');
+    if (choosing) { choosing = null; sync(); }
+  };
   $('#btn-cloud').onclick = () => {
     $('#cloud-id').value = '';
     say('');

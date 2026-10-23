@@ -201,7 +201,17 @@
           <div class="cloud-label">つながっている ID</div>
           <div class="cloud-id-now"><span id="cloud-id-now"></span> <button id="cloud-copy" class="btn-tiny">コピー</button></div>
           <div id="cloud-state" class="cloud-state"></div>
-          <div class="cloud-btns">
+          <div id="cloud-choice" class="cloud-choice" hidden>
+            <div class="cloud-compare">
+              <div><span class="cloud-label">📱 この スマホ</span><b id="cloud-here"></b></div>
+              <div><span class="cloud-label">☁️ ウェブ</span><b id="cloud-web"></b></div>
+            </div>
+            <button id="cloud-merge" class="btn btn-go cloud-pick">🔀 まぜる（おすすめ）<small>りょうほうの すすみぐあいを たしざん</small></button>
+            <button id="cloud-pull" class="btn btn-soft cloud-pick">⬇️ うけいれる<small>ウェブの データを この スマホに いれる</small></button>
+            <button id="cloud-push" class="btn btn-soft cloud-pick">⬆️ こうしんする<small>この スマホの データで ウェブを うわがき</small></button>
+            <button id="cloud-cancel" class="btn-tiny">やめる</button>
+          </div>
+          <div id="cloud-btns-linked" class="cloud-btns">
             <button id="cloud-sync" class="btn btn-go">いま どうきする</button>
             <button id="cloud-unlink" class="btn btn-soft">きょうゆうを やめる</button>
           </div>
