@@ -685,6 +685,18 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .cloud-btns .btn { font-size: 16px; padding: 10px 18px; }
 .cloud-id-now { font-size: 22px; font-weight: 900; letter-spacing: 1px; word-break: break-all; }
 .cloud-state { font-size: 14px; }
+.adult { text-align: left; align-items: stretch; gap: 10px; }
+.adult-body { display: flex; flex-direction: column; gap: 10px; }
+.adult-body[hidden] { display: none; }
+.adult-q { display: flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 900; }
+.adult-q .cloud-input { width: 6em; }
+.adult-now { font-size: 15px; }
+.adult-map { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+.adult-map button { font: inherit; font-size: 18px; font-weight: 900; color: #fff; border: 0; border-radius: 12px; padding: 8px 0; text-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.adult-map button.done { opacity: .55; }
+.adult-map button.cur { outline: 3px solid #5a3e2b; outline-offset: 1px; }
+#btn-reset { font-size: 15px; padding: 10px 16px; }
+.adult-map .map-sep { grid-column: 1 / -1; font-size: 13px; opacity: .7; }
 .cloud-choice { display: flex; flex-direction: column; gap: 8px; }
 .cloud-choice[hidden], .cloud-btns[hidden] { display: none; }
 .cloud-compare { display: flex; flex-direction: column; gap: 4px; background: #fff; border-radius: 12px; padding: 8px 10px; }

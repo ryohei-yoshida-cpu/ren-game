@@ -72,7 +72,7 @@
           <button id="btn-cloud" class="btn btn-soft">☁️ きょうゆう</button>
           <button id="btn-zukan" class="btn btn-soft">🏅 メダル <span id="zukan-count"></span></button>
         </div>
-        <button id="btn-reset" class="btn-tiny">さいしょから（おとなよう）</button>
+        <button id="btn-adult" class="btn-tiny">⚙️ おとなよう</button>
       </div>
       <p class="credit">
         ひらがなの かきじゅん: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> (CC BY-SA 3.0)<br>
@@ -173,6 +173,33 @@
         <p class="forms-lead">つかいたい へんしんを えらんでね。だんの ボスを たおすと あたらしい へんしんを おぼえるよ</p>
         <div id="forms-grid" class="forms-grid"></div>
         <button id="btn-forms-close" class="btn btn-soft">とじる</button>
+      </div>
+    </div>
+
+    <!-- ⚙️ おとなよう（すすみぐあいを かえる）-->
+    <div id="overlay-adult" class="overlay">
+      <div class="panel adult">
+        <div class="studio-head">
+          <div class="studio-title">⚙️ おとなよう</div>
+          <button id="adult-close" class="btn-icon" aria-label="とじる">✕</button>
+        </div>
+        <div id="adult-gate" class="cloud-box">
+          <div class="cloud-label">おとなの ひと だけ。こたえを いれてね</div>
+          <div class="adult-q"><span id="adult-q"></span> = <input id="adult-a" class="cloud-input" inputmode="numeric" autocomplete="off"></div>
+          <button id="adult-ok" class="btn btn-go">ひらく</button>
+        </div>
+        <div id="adult-body" class="adult-body" hidden>
+          <div class="cloud-box">
+            <div class="cloud-label">すすみぐあい（えらんだ だんから あそべるように します）</div>
+            <div id="adult-now" class="adult-now"></div>
+            <div id="adult-map" class="adult-map"></div>
+            <p class="cloud-note">まえの だんは ぜんぶ クリア（⭐）に なり、あとの だんは まだに なります。メダルは そのまま。へんしんは クリアした だんの かずで おぼえます。</p>
+          </div>
+          <div class="cloud-box">
+            <button id="btn-reset" class="btn btn-soft">さいしょから（ぜんぶ けす）</button>
+          </div>
+        </div>
+        <p id="adult-msg" class="studio-msg" aria-live="polite"></p>
       </div>
     </div>
 

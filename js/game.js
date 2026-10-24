@@ -1617,7 +1617,7 @@
     cancelAll();
     keepAwake(false);
     if (!fromBack && history.state && history.state.play) history.back();
-    ['#overlay-clear', '#overlay-bye', '#overlay-zukan', '#overlay-ending', '#overlay-cloud', '#overlay-forms'].forEach(id => showOverlay(id, false));
+    ['#overlay-clear', '#overlay-bye', '#overlay-zukan', '#overlay-ending', '#overlay-cloud', '#overlay-forms', '#overlay-adult'].forEach(id => showOverlay(id, false));
     $('#actors').innerHTML = '';
     $('#btn-henshin').hidden = true;
     $('#medal-detail').classList.remove('show');
@@ -1734,8 +1734,62 @@
       save.resetAt = Date.now();   // ほかの スマホにも「さいしょから」を つたえる
       writeSave();
       renderTitle();
+      renderAdult();
+      $('#adult-msg').textContent = 'さいしょから に したよ';
     }
   };
+
+  // ---------- ⚙️ おとなよう（すすみぐあいを かえる）----------
+  let adultAnswer = 0;
+  function renderAdult() {
+    const nx = nextStageIdx();
+    $('#adult-now').textContent = `いま: ${STAGES[nx].name} の だん（クリア ${save.cleared.length}/${STAGES.length}）`;
+    const map = $('#adult-map');
+    map.innerHTML = '';
+    STAGES.forEach((st, i) => {
+      if (st.chapter === 2 && !(STAGES[i - 1] || {}).chapter) map.insertAdjacentHTML('beforeend', '<div class="map-sep">🌟 つづきの ぼうけん</div>');
+      const b = document.createElement('button');
+      b.textContent = st.name;
+      b.style.background = st.color;
+      b.classList.toggle('done', save.cleared.includes(i));
+      b.classList.toggle('cur', i === nx);
+      b.onclick = () => jumpTo(i);
+      map.appendChild(b);
+    });
+  }
+  function jumpTo(i) {
+    const st = STAGES[i];
+    if (!confirm(`「${st.name}」の だんから あそべるように しますか？\n（まえの だんは クリア、あとの だんは まだに なります）`)) return;
+    save.cleared = STAGES.map((_, k) => k).filter(k => k < i);
+    save.unlocked = i;
+    if (i > 0) save.introSeen = true;
+    // ほかの スマホにも この すすみぐあいを つたえる（たしざん しない）
+    save.resetAt = Date.now();
+    writeSave();
+    renderTitle();
+    renderAdult();
+    $('#adult-msg').textContent = `「${st.name}」の だんから あそべるように したよ`;
+  }
+  $('#btn-adult').onclick = () => {
+    const a = 11 + Math.floor(Math.random() * 30), b = 11 + Math.floor(Math.random() * 30);
+    adultAnswer = a + b;
+    $('#adult-q').textContent = `${a} + ${b}`;
+    $('#adult-a').value = '';
+    $('#adult-msg').textContent = '';
+    $('#adult-gate').hidden = false;
+    $('#adult-body').hidden = true;
+    showOverlay('#overlay-adult', true);
+  };
+  const adultOpen = () => {
+    if (Number($('#adult-a').value) !== adultAnswer) { $('#adult-msg').textContent = 'ちがうよ'; return; }
+    $('#adult-msg').textContent = '';
+    $('#adult-gate').hidden = true;
+    $('#adult-body').hidden = false;
+    renderAdult();
+  };
+  $('#adult-ok').onclick = adultOpen;
+  $('#adult-a').addEventListener('keydown', e => { if (e.key === 'Enter') adultOpen(); });
+  $('#adult-close').onclick = () => showOverlay('#overlay-adult', false);
 
   // ---------- インストール（ホームがめんに ついか）----------
   let installPrompt = null;
@@ -1778,6 +1832,7 @@
         save = Object.assign(defaultSave(), s);
         try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* むし */ }
         if ($('#screen-title').classList.contains('active')) renderTitle();
+        if ($('#overlay-adult').classList.contains('show') && !$('#adult-body').hidden) renderAdult();
       },
     });
   }
